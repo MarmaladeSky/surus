@@ -1,0 +1,51 @@
+# Typed PostgreSQL DSL
+
+A specification-driven coding-agent experiment focused on building a statically
+typed embedded DSL for PostgreSQL in Rust.
+
+The project starts from PostgreSQL schema metadata—tables, columns, types, keys,
+constraints, and related catalog information—and exposes that schema through
+generated typed definitions.
+
+Queries are constructed through an embedded DSL, represented internally as a
+typed query AST, and compiled into PostgreSQL SQL with bound parameters.
+
+The main goals are:
+
+- PostgreSQL-specific semantics rather than database portability
+- schema-aware, compile-time type safety
+- typed expressions, projections, joins, and query results
+- compile-time rejection of invalid queries where practical
+- support for PostgreSQL-specific features
+- clean separation between query construction, SQL generation, and execution
+
+The repository is also an experiment in specification-driven software
+development with coding agents.
+
+Rather than treating the coding agent as a code-completion tool, the project
+uses a written specification as the primary source of intent. The coding agent
+is expected to derive implementation decisions from that specification, produce
+tests, refine the design, and keep the implementation aligned with the stated
+invariants.
+
+The broader question is whether a sufficiently precise specification can serve
+as an effective interface between a human designer and a coding agent when
+implementing a non-trivial, strongly typed system.
+
+# Initial prompt
+
+```
+Read `README.md` and `docs/initial_concept.md`, then implement the project described there.
+
+Treat the specification as the primary source of truth. Make reasonable design decisions where details are unspecified, keep the implementation idiomatic Rust, and add tests for the core type-safety and SQL-generation behavior.
+
+Before implementing, split the work into a small sequence of concrete steps. Execute them one by one, validating each step before moving to the next.
+
+Keep the implementation as minimal as possible. Prefer the smallest design and code surface that satisfies the specification. Avoid unnecessary abstractions, dependencies, framework-like infrastructure, premature generalization, and features not required by the current spec.
+
+Never modify or rewrite the specification. If the specification is ambiguous or incomplete, resolve it in the implementation without changing the source documents.
+
+Focus on producing a small, working implementation in this repository.
+
+Environment: disposable NixOS VM. The repository is at `/workspace/rslick`; only `/workspace` persists across reboots. Rust 1.99.0 with clippy and rustfmt is installed. PostgreSQL 18 runs locally; `psql` connects as superuser `agent` without a password.
+```
