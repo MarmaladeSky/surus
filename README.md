@@ -35,7 +35,7 @@ implementing a non-trivial, strongly typed system.
 # Initial prompt
 
 ```
-Read `README.md` and `docs/initial_concept.md`, then implement the project described there.
+Read `README.md`, `docs/initial_concept.md` and `docs/target_environment.md`, then implement the project described there.
 
 Treat the specification as the primary source of truth. Make reasonable design decisions where details are unspecified, keep the implementation idiomatic Rust, and add tests for the core type-safety and SQL-generation behavior.
 
