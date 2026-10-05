@@ -79,16 +79,19 @@
 
             systemd.tmpfiles.rules = [ "d /workspace 0755 agent users -" ];
 
-            systemd.services.clone-repo = {
+            systemd.services.export-repo = {
               wantedBy = [ "multi-user.target" ];
               unitConfig.RequiresMountsFor = [ "/workspace" "/mnt/repo" ];
               serviceConfig = {
                 Type = "oneshot";
                 User = "agent";
               };
-              path = [ pkgs.git ];
+              path = [ pkgs.git pkgs.gnutar ];
               script = ''
-                [ -d /workspace/surus ] || git clone /mnt/repo /workspace/surus
+                [ -d /workspace/surus ] || {
+                  mkdir -p /workspace/surus
+                  git -C /mnt/repo archive HEAD | tar -x -C /workspace/surus
+                }
               '';
             };
 
