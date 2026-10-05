@@ -11,6 +11,9 @@ The DSL targets PostgreSQL 18.
 - Formal grammar: `docs/resources/gram.y`, copied from
   <https://github.com/postgres/postgres/blob/REL_18_STABLE/src/backend/parser/gram.y>
 
+Both files are PostgreSQL material, redistributed under the PostgreSQL License
+with their original copyright notices.
+
 ## Test database
 
 Tests under `tests/dsl` expect a PostgreSQL 18 instance reachable at

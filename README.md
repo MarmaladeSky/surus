@@ -1,4 +1,4 @@
-# Typed PostgreSQL DSL
+# Surus: Typed PostgreSQL DSL
 
 A specification-driven coding-agent experiment focused on building a statically
 typed embedded DSL for PostgreSQL in Rust.
@@ -22,9 +22,9 @@ The main goals are:
 The repository is also an experiment in specification-driven software
 development with coding agents.
 
-Rather than treating the coding agent as a code-completion tool, the project
-uses a written specification as the primary source of intent. The coding agent
-is expected to derive implementation decisions from that specification, produce
+Rather than treating the coding agent as a coding tool, the project uses a
+written specification as the primary source of intent. The coding agent is
+expected to derive implementation decisions from that specification, produce
 tests, refine the design, and keep the implementation aligned with the stated
 invariants.
 
@@ -35,9 +35,11 @@ implementing a non-trivial, strongly typed system.
 # Initial prompt
 
 ```
-Read `README.md`, `docs/initial_concept.md` and `docs/target_environment.md`, then implement the project described there.
+Read `README.md`, `docs/initial_concept.md`, `docs/target_environment.md` and `docs/recommendations.md`, then implement the project described there.
 
-Treat the specification as the primary source of truth. Make reasonable design decisions where details are unspecified, keep the implementation idiomatic Rust, and add tests for the core type-safety and SQL-generation behavior.
+Treat the specification as the primary source of truth. Make reasonable design decisions where details are unspecified and keep the implementation idiomatic Rust.
+
+The test suite in `tests/dsl` already exists. Each test pairs plain SQL in `mod.rs` with a placeholder in the sibling `dsl.rs` that returns `SELECT NULL WHERE false`. Replace the placeholders with queries built through the DSL; do not change the tests, the fixtures in `tests/dsl/schema`, or the generated files under `tests/dsl/operators/catalog`.
 
 Before implementing, split the work into a small sequence of concrete steps. Execute them one by one, validating each step before moving to the next.
 
@@ -47,5 +49,34 @@ Never modify or rewrite the specification. If the specification is ambiguous or 
 
 Focus on producing a small, working implementation in this repository.
 
-Environment: disposable NixOS VM. The repository is at `/workspace/surus`; only `/workspace` persists across reboots. Rust 1.99.0 with clippy and rustfmt is installed. PostgreSQL 18 runs locally; `psql` connects as superuser `agent` without a password.
+Environment: disposable NixOS VM. The repository is at `/workspace/surus`; only `/workspace` persists across reboots. Rust 1.99.0 with clippy and rustfmt is installed. PostgreSQL 18 runs locally; `psql` connects as superuser `agent` without a password. Tests read the connection URL from `SURUS_TEST_DATABASE_URL`.
 ```
+
+# Running the experiment
+
+Start the VM from the repository root; the disk images are created on first run
+and the repository is cloned into `/workspace/surus` inside it:
+
+```
+nix run .#nixosConfigurations.agent.config.microvm.declaredRunner
+```
+
+Log in and launch the agent with the initial prompt above (password `agent`):
+
+```
+ssh -p 2222 agent@localhost
+cd /workspace/surus
+export SURUS_TEST_DATABASE_URL='postgres:///agent?host=/run/postgresql&user=agent'
+claude|codex|pi|etc.
+```
+
+The agent works in the VM's checkout and may leave changes uncommitted. From the
+host, pack the working copy inside the VM and stream it over SSH, skipping build
+output:
+
+```
+ssh -p 2222 agent@localhost 'tar -C /workspace -czf - --exclude=surus/target surus' > surus-agent-run.tar.gz
+```
+
+Then stop the VM; only `/workspace` survives a restart, and nothing is written
+back to the host checkout.
