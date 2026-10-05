@@ -12,6 +12,7 @@ echo "Running $model with effort $effort; results go to $out"
 
 cd "$(dirname "$0")"
 mkdir -p "$out"
+git rev-parse HEAD > "$out/commit"
 
 vm() {
     sshpass -p agent ssh -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null agent@localhost "$@"
@@ -43,3 +44,5 @@ vm 'cat /workspace/run.err' > "$out/run.err"
 vm 'cat /workspace/claude.version' > "$out/claude.version"
 
 vm 'sudo poweroff' || true
+
+./check-protected.sh "$out/surus-agent-run.tar.gz" "$(cat "$out/commit")" | tee "$out/protected.txt"

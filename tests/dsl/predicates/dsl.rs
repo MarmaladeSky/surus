@@ -47,3 +47,39 @@ pub fn between_symmetric(_first: i32, _second: i32) -> Query {
 pub fn overlaps() -> Query {
     Query::plain("SELECT NULL WHERE false")
 }
+
+pub fn arithmetic_chain() -> Query {
+    Query::plain("SELECT NULL WHERE false")
+}
+
+pub fn arithmetic_nullable_column() -> Query {
+    Query::plain("SELECT NULL WHERE false")
+}
+
+pub fn arithmetic_mixed_nullability() -> Query {
+    Query::plain("SELECT NULL WHERE false")
+}
+
+pub fn negate_expression() -> Query {
+    Query::plain("SELECT NULL WHERE false")
+}
+
+pub fn compare_expressions() -> Query {
+    Query::plain("SELECT NULL WHERE false")
+}
+
+pub fn bool_mixed_nullability() -> Query {
+    Query::plain("SELECT NULL WHERE false")
+}
+
+pub fn operator_results_combined() -> Query {
+    Query::plain("SELECT NULL WHERE false")
+}
+
+pub fn json_chain_into_text_op() -> Query {
+    Query::plain("SELECT NULL WHERE false")
+}
+
+pub fn cast_of_expression() -> Query {
+    Query::plain("SELECT NULL WHERE false")
+}

@@ -43,3 +43,15 @@ pub fn virtual_generated_column(_name: &str, _price_cents: i32) -> Query {
 pub fn on_conflict_partial_index(_name: &str, _email: &str) -> Query {
     Query::plain("SELECT NULL WHERE false")
 }
+
+pub fn returning_expression(_name: &str, _price_cents: i32, _quantity: i32) -> Query {
+    Query::plain("SELECT NULL WHERE false")
+}
+
+pub fn insert_select_expression() -> Query {
+    Query::plain("SELECT NULL WHERE false")
+}
+
+pub fn insert_bound(_name: &str, _email: Option<&str>) -> Query {
+    Query::plain("SELECT NULL WHERE false")
+}

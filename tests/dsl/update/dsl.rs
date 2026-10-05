@@ -23,3 +23,15 @@ pub fn returning_star(_name: &str) -> Query {
 pub fn returning_old_and_new(_name: &str, _delta: i32) -> Query {
     Query::plain("SELECT NULL WHERE false")
 }
+
+pub fn update_set_expression() -> Query {
+    Query::plain("SELECT NULL WHERE false")
+}
+
+pub fn update_from_join_predicate() -> Query {
+    Query::plain("SELECT NULL WHERE false")
+}
+
+pub fn update_bound(_id: i64, _name: &str) -> Query {
+    Query::plain("SELECT NULL WHERE false")
+}

@@ -290,3 +290,116 @@ fn rows_from_multiple_functions() {
         dsl::rows_from_multiple_functions,
     );
 }
+
+fn unique_id() -> i64 {
+    900_000_000 + (rnd::u64() % 100_000_000) as i64
+}
+
+#[test]
+fn function_columns_in_join_on() {
+    let mut case = Case::new();
+    let base = unique_id();
+    case.exec(&format!(
+        "INSERT INTO users (id, name) VALUES ({base}, '{}'), ({}, '{}'), ({}, '{}')",
+        rnd::text(),
+        base + 1,
+        rnd::text(),
+        base + 5,
+        rnd::text(),
+    ));
+
+    case.assert_same(
+        &format!(
+            "SELECT u.name, s.n FROM generate_series({base}::int8, {}::int8) AS s(n)
+             JOIN users u ON u.id = s.n
+             ORDER BY s.n",
+            base + 2
+        ),
+        || dsl::function_columns_in_join_on(base, base + 2),
+    );
+}
+
+#[test]
+fn ordinality_column_in_where() {
+    let mut case = Case::new();
+    case.exec(&format!(
+        "INSERT INTO users (name) VALUES ('a0{}0b'), ('c0{}')",
+        rnd::text(),
+        rnd::text(),
+    ));
+
+    case.assert_same(
+        "SELECT u.name, w.part FROM users u
+         CROSS JOIN LATERAL unnest(string_to_array(u.name, '0')) WITH ORDINALITY AS w(part, ord)
+         WHERE w.ord > 1
+         ORDER BY u.name, w.ord",
+        dsl::ordinality_column_in_where,
+    );
+}
+
+#[test]
+fn values_in_from_joined() {
+    let mut case = Case::new();
+    let first = unique_id();
+    let second = unique_id();
+    case.exec(&format!(
+        "INSERT INTO users (id, name) VALUES ({first}, '{}'), ({second}, '{}'), ({}, '{}')",
+        rnd::text(),
+        rnd::text(),
+        unique_id(),
+        rnd::text(),
+    ));
+
+    case.assert_same(
+        &format!(
+            "SELECT u.name, v.label FROM users u
+             JOIN (VALUES ({first}::int8, 'a'), ({second}::int8, 'b')) AS v(id, label) ON v.id = u.id
+             ORDER BY v.label"
+        ),
+        || dsl::values_in_from_joined(first, second),
+    );
+}
+
+#[test]
+fn self_join_aliases() {
+    let mut case = Case::new();
+    seed_groups(&mut case);
+
+    case.assert_same(
+        "SELECT a.name, b.name FROM users a
+         JOIN users b ON a.group_id = b.group_id AND a.id < b.id
+         ORDER BY a.name, b.name",
+        dsl::self_join_aliases,
+    );
+}
+
+#[test]
+fn lateral_columns_in_projection_expr() {
+    let mut case = Case::new();
+    seed_groups(&mut case);
+
+    case.assert_same(
+        "SELECT g.name, l.cnt + 1 FROM groups g
+         CROSS JOIN LATERAL (SELECT count(*) AS cnt FROM users u WHERE u.group_id = g.id) l
+         ORDER BY g.name",
+        dsl::lateral_columns_in_projection_expr,
+    );
+}
+
+#[test]
+fn subquery_columns_in_where() {
+    let mut case = Case::new();
+    case.exec(&format!(
+        "INSERT INTO products (name, price_cents, quantity) VALUES ('{}', 5, 1), ('{}', 7, 3), ('{}', 9, 4)",
+        rnd::text(),
+        rnd::text(),
+        rnd::text(),
+    ));
+
+    case.assert_same(
+        "SELECT s.name, s.total FROM (SELECT name, price_cents * quantity AS total FROM products) s
+         WHERE s.total > 10
+         ORDER BY s.name",
+        dsl::subquery_columns_in_where,
+    );
+}

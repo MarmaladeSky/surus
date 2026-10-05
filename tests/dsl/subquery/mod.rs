@@ -186,3 +186,40 @@ fn row_valued_in() {
         || dsl::row_valued_in(&big),
     );
 }
+
+#[test]
+fn correlated_scalar_in_arithmetic() {
+    let mut case = Case::new();
+    seed_groups(&mut case);
+
+    case.assert_same(
+        "SELECT g.name, (SELECT count(*) FROM users u WHERE u.group_id = g.id) + 1
+         FROM groups g
+         ORDER BY g.name",
+        dsl::correlated_scalar_in_arithmetic,
+    );
+}
+
+#[test]
+fn exists_and_predicate() {
+    let mut case = Case::new();
+    seed_groups(&mut case);
+
+    case.assert_same(
+        "SELECT g.name FROM groups g
+         WHERE EXISTS (SELECT 1 FROM users u WHERE u.group_id = g.id) AND g.parent_id IS NULL
+         ORDER BY g.name",
+        dsl::exists_and_predicate,
+    );
+}
+
+#[test]
+fn scalar_subquery_compared() {
+    let mut case = Case::new();
+    seed_products(&mut case);
+
+    case.assert_same(
+        "SELECT name FROM products WHERE price_cents > (SELECT avg(price_cents) FROM products) ORDER BY name",
+        dsl::scalar_subquery_compared,
+    );
+}

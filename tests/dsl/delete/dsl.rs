@@ -15,3 +15,7 @@ pub fn returning_table_star(_group: &str) -> Query {
 pub fn returning_old(_name: &str) -> Query {
     Query::plain("SELECT NULL WHERE false")
 }
+
+pub fn delete_using_subquery() -> Query {
+    Query::plain("SELECT NULL WHERE false")
+}

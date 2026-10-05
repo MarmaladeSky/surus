@@ -1,6 +1,7 @@
 mod dsl;
 
 use crate::support::{Case, rnd};
+use postgres::types::Type;
 
 #[test]
 fn user_returning() {
@@ -191,4 +192,51 @@ fn on_conflict_partial_index() {
         ),
         || dsl::on_conflict_partial_index(&renamed, &email),
     );
+}
+
+#[test]
+fn returning_expression() {
+    let mut case = Case::new();
+    let name = rnd::text();
+    let price_cents = rnd::int();
+    let quantity = rnd::int();
+
+    case.assert_same_named(
+        &format!(
+            "INSERT INTO products (name, price_cents, quantity)
+             VALUES ('{name}', {price_cents}, {quantity})
+             RETURNING price_cents * quantity AS total"
+        ),
+        || dsl::returning_expression(&name, price_cents, quantity),
+    );
+}
+
+#[test]
+fn insert_select_expression() {
+    let mut case = Case::new();
+    case.exec(&format!(
+        "INSERT INTO groups (name) VALUES ('{}'), ('{}')",
+        rnd::text(),
+        rnd::text(),
+    ));
+
+    case.assert_same(
+        "INSERT INTO groups (name) SELECT name || '-copy' FROM groups RETURNING name",
+        dsl::insert_select_expression,
+    );
+}
+
+#[test]
+fn insert_bound() {
+    let mut case = Case::new();
+    let name = rnd::text();
+    let email = rnd::text();
+
+    case.assert_same(
+        &format!("INSERT INTO users (name, email) VALUES ('{name}', NULL) RETURNING name, email"),
+        || dsl::insert_bound(&name, None),
+    );
+    case.assert_param_types(&[Type::TEXT, Type::TEXT], || {
+        dsl::insert_bound(&name, Some(&email))
+    });
 }

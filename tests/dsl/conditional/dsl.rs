@@ -19,3 +19,7 @@ pub fn nullif() -> Query {
 pub fn greatest_least() -> Query {
     Query::plain("SELECT NULL WHERE false")
 }
+
+pub fn case_into_arithmetic() -> Query {
+    Query::plain("SELECT NULL WHERE false")
+}

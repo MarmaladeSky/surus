@@ -30,6 +30,12 @@ and to read no matter how many other constructs the DSL supports. Adding
 CTEs, window functions or `MERGE` may add types and methods, but must not add
 ceremony to queries that do not use them.
 
+## Type safety
+
+No API accepts SQL text or values formatted into it, and no type is asserted
+by the caller instead of derived by the DSL. Leave a test failing rather than
+pass it otherwise; such a pass rejects the whole run.
+
 ## Evaluation
 
 The implementation is judged on three criteria, listed by descending priority:

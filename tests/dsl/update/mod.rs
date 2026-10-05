@@ -1,6 +1,7 @@
 mod dsl;
 
 use crate::support::{Case, rnd};
+use postgres::types::Type;
 
 #[test]
 fn set_email() {
@@ -111,4 +112,64 @@ fn returning_old_and_new() {
         ),
         || dsl::returning_old_and_new(&name, 5),
     );
+}
+
+#[test]
+fn update_set_expression() {
+    let mut case = Case::new();
+    case.exec(&format!(
+        "INSERT INTO products (name, price_cents, quantity) VALUES ('{}', 5, 1), ('{}', 0, 3), ('{}', 9, 4)",
+        rnd::text(),
+        rnd::text(),
+        rnd::text(),
+    ));
+
+    case.assert_same(
+        "UPDATE products SET quantity = quantity * 2 + 1 WHERE price_cents > 0 RETURNING name, quantity",
+        dsl::update_set_expression,
+    );
+}
+
+#[test]
+fn update_from_join_predicate() {
+    let mut case = Case::new();
+    let group = rnd::text();
+    case.exec(&format!(
+        "INSERT INTO groups (name) VALUES ('{group}');
+         INSERT INTO users (name, email, group_id)
+             SELECT '{}', NULL, id FROM groups WHERE name = '{group}'
+             UNION ALL SELECT '{}', '{}', id FROM groups WHERE name = '{group}'
+             UNION ALL SELECT '{}', NULL, NULL;",
+        rnd::text(),
+        rnd::text(),
+        rnd::text(),
+        rnd::text(),
+    ));
+
+    case.assert_same(
+        "UPDATE users u SET email = g.name || '@x'
+         FROM groups g
+         WHERE g.id = u.group_id AND u.email IS NULL
+         RETURNING u.name, u.email",
+        dsl::update_from_join_predicate,
+    );
+}
+
+#[test]
+fn update_bound() {
+    let mut case = Case::new();
+    let id = 900_000_000 + (rnd::u64() % 100_000_000) as i64;
+    let name = rnd::text();
+    case.exec(&format!(
+        "INSERT INTO users (id, name) VALUES ({id}, '{}'), ({}, '{}')",
+        rnd::text(),
+        id + 1,
+        rnd::text(),
+    ));
+
+    case.assert_same(
+        &format!("UPDATE users SET name = '{name}' WHERE id = {id} RETURNING id, name"),
+        || dsl::update_bound(id, &name),
+    );
+    case.assert_param_types(&[Type::TEXT, Type::INT8], || dsl::update_bound(id, &name));
 }

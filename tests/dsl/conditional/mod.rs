@@ -94,3 +94,14 @@ fn greatest_least() {
         dsl::greatest_least,
     );
 }
+
+#[test]
+fn case_into_arithmetic() {
+    let mut case = Case::new();
+    seed_products(&mut case);
+
+    case.assert_same(
+        "SELECT name, (CASE WHEN quantity > 0 THEN price_cents ELSE 0 END) + 1 FROM products ORDER BY name",
+        dsl::case_into_arithmetic,
+    );
+}

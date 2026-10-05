@@ -197,3 +197,112 @@ fn overlaps() {
         dsl::overlaps,
     );
 }
+
+fn seed_type_samples(case: &mut Case) {
+    case.exec(
+        r#"INSERT INTO type_samples (v_int4, v_int4range, v_box, v_jsonb)
+           VALUES (5, '[1,10)', '(2,2),(0,0)', '{"a": {"b": "c"}}'),
+                  (20, '[1,10)', '(1,1),(0,0)', '{"a": {"b": "d"}}')"#,
+    );
+}
+
+#[test]
+fn arithmetic_chain() {
+    let mut case = Case::new();
+    seed_products(&mut case);
+
+    case.assert_same(
+        "SELECT name, (price_cents + quantity) * 2 - 1 FROM products ORDER BY name",
+        dsl::arithmetic_chain,
+    );
+}
+
+#[test]
+fn arithmetic_nullable_column() {
+    let mut case = Case::new();
+    seed_users(&mut case);
+
+    case.assert_same(
+        "SELECT name, group_id + 1 FROM users ORDER BY name",
+        dsl::arithmetic_nullable_column,
+    );
+}
+
+#[test]
+fn arithmetic_mixed_nullability() {
+    let mut case = Case::new();
+    seed_users(&mut case);
+
+    case.assert_same(
+        "SELECT name, group_id * id FROM users ORDER BY name",
+        dsl::arithmetic_mixed_nullability,
+    );
+}
+
+#[test]
+fn negate_expression() {
+    let mut case = Case::new();
+    seed_products(&mut case);
+
+    case.assert_same(
+        "SELECT name, -(price_cents - quantity) FROM products ORDER BY name",
+        dsl::negate_expression,
+    );
+}
+
+#[test]
+fn compare_expressions() {
+    let mut case = Case::new();
+    seed_products(&mut case);
+
+    case.assert_same(
+        "SELECT name FROM products WHERE price_cents * quantity > total_cents - 1 ORDER BY name",
+        dsl::compare_expressions,
+    );
+}
+
+#[test]
+fn bool_mixed_nullability() {
+    let mut case = Case::new();
+    seed_users(&mut case);
+
+    case.assert_same(
+        "SELECT name FROM users
+         WHERE (name <> '' AND email LIKE 'v%') OR group_id IS NULL
+         ORDER BY name",
+        dsl::bool_mixed_nullability,
+    );
+}
+
+#[test]
+fn operator_results_combined() {
+    let mut case = Case::new();
+    seed_type_samples(&mut case);
+
+    case.assert_same(
+        "SELECT v_int4, (v_int4range @> v_int4) AND (v_box && v_box) FROM type_samples ORDER BY v_int4",
+        dsl::operator_results_combined,
+    );
+}
+
+#[test]
+fn json_chain_into_text_op() {
+    let mut case = Case::new();
+    seed_type_samples(&mut case);
+
+    case.assert_same(
+        "SELECT (v_jsonb -> 'a' ->> 'b') || 'x' FROM type_samples ORDER BY v_int4",
+        dsl::json_chain_into_text_op,
+    );
+}
+
+#[test]
+fn cast_of_expression() {
+    let mut case = Case::new();
+    seed_products(&mut case);
+
+    case.assert_same(
+        "SELECT name, (price_cents * quantity)::numeric / 100 FROM products ORDER BY name",
+        dsl::cast_of_expression,
+    );
+}

@@ -77,3 +77,36 @@ fn named_argument_notation() {
         dsl::named_argument_notation,
     );
 }
+
+#[test]
+fn function_of_function() {
+    let mut case = Case::new();
+    seed_users(&mut case);
+
+    case.assert_same(
+        "SELECT upper(substr(lower(name), 1, 3)) || '!' FROM users ORDER BY name",
+        dsl::function_of_function,
+    );
+}
+
+#[test]
+fn aggregate_of_expression() {
+    let mut case = Case::new();
+    seed_users(&mut case);
+
+    case.assert_same(
+        "SELECT count(*) FILTER (WHERE email IS NOT NULL), sum(length(name) * 2) FROM users",
+        dsl::aggregate_of_expression,
+    );
+}
+
+#[test]
+fn window_over_expression() {
+    let mut case = Case::new();
+    seed_products(&mut case);
+
+    case.assert_same(
+        "SELECT name, sum(price_cents * quantity) OVER (ORDER BY name) FROM products ORDER BY name",
+        dsl::window_over_expression,
+    );
+}

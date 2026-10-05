@@ -63,3 +63,27 @@ pub fn set_returning_function_in_from(_from: i32, _to: i32) -> Query {
 pub fn rows_from_multiple_functions() -> Query {
     Query::plain("SELECT NULL WHERE false")
 }
+
+pub fn function_columns_in_join_on(_from: i64, _to: i64) -> Query {
+    Query::plain("SELECT NULL WHERE false")
+}
+
+pub fn ordinality_column_in_where() -> Query {
+    Query::plain("SELECT NULL WHERE false")
+}
+
+pub fn values_in_from_joined(_first: i64, _second: i64) -> Query {
+    Query::plain("SELECT NULL WHERE false")
+}
+
+pub fn self_join_aliases() -> Query {
+    Query::plain("SELECT NULL WHERE false")
+}
+
+pub fn lateral_columns_in_projection_expr() -> Query {
+    Query::plain("SELECT NULL WHERE false")
+}
+
+pub fn subquery_columns_in_where() -> Query {
+    Query::plain("SELECT NULL WHERE false")
+}

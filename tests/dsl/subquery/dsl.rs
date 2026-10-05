@@ -39,3 +39,15 @@ pub fn not_in_with_null_returns_nothing() -> Query {
 pub fn row_valued_in(_group: &str) -> Query {
     Query::plain("SELECT NULL WHERE false")
 }
+
+pub fn correlated_scalar_in_arithmetic() -> Query {
+    Query::plain("SELECT NULL WHERE false")
+}
+
+pub fn exists_and_predicate() -> Query {
+    Query::plain("SELECT NULL WHERE false")
+}
+
+pub fn scalar_subquery_compared() -> Query {
+    Query::plain("SELECT NULL WHERE false")
+}

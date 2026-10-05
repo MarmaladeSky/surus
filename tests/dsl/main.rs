@@ -21,6 +21,7 @@ mod order_by;
 mod parameters;
 mod predicates;
 mod ranges;
+mod rejects;
 mod rows;
 mod select;
 mod set_ops;

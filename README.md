@@ -130,3 +130,13 @@ ssh -p 2222 agent@localhost 'cat /workspace/run.err' > run.err
 
 Then stop the VM; only `/workspace` survives a restart, and nothing is written
 back to the host checkout.
+
+Verify that the agent left the specification and the tests untouched, passing
+the commit the VM was started from:
+
+```
+./check-protected.sh surus-agent-run.tar.gz <commit>
+```
+
+`run-experiment.sh` records the commit in `commit` and the result in
+`protected.txt`.
