@@ -108,7 +108,6 @@ nohup claude -p "$(cat docs/initial_prompt.md)" \
   --permission-mode bypassPermissions \
   --max-turns 300 \
   --output-format stream-json --verbose \
-  --bare \
   --effort "$CLAUDE_EFFORT" \
   > /workspace/run.jsonl 2> /workspace/run.err < /dev/null &
 
