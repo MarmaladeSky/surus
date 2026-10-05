@@ -87,10 +87,36 @@ Log in and launch the agent with the prompt from `docs/initial_prompt.md`
 
 ```
 ssh -p 2222 agent@localhost
-cd /workspace/surus
+
+# claude
+claude setup-token # auth and keep the token
+
+export CLAUDE_CODE_OAUTH_TOKEN="PUT_THE_TOKEN_HERE"
 export SURUS_TEST_DATABASE_URL='postgres:///agent?host=/run/postgresql&user=agent'
-claude|codex|pi|etc.
+
+# claude-sonnet-5|claude-opus-5-5|claude-fable-5-1
+export CLAUDE_MODEL=claude-sonnet-5
+# low|medium|high|xhigh|max
+export CLAUDE_EFFORT=medium
+
+claude --version > /workspace/claude.version
+
+cd /workspace/surus
+
+nohup claude -p "$(cat docs/initial_prompt.md)" \
+  --model "$CLAUDE_MODEL" \
+  --permission-mode bypassPermissions \
+  --max-turns 300 \
+  --output-format stream-json --verbose \
+  --bare \
+  --effort "$CLAUDE_EFFORT" \
+  > /workspace/run.jsonl 2> /workspace/run.err < /dev/null &
+
+tail -f /workspace/run.jsonl # follow progress; Ctrl-C stops tail, not the run
 ```
+
+The run survives a dropped SSH session. It is finished when
+`pgrep -x claude` prints nothing.
 
 The agent works in the VM's checkout and may leave changes uncommitted. From the
 host, pack the working copy inside the VM and stream it over SSH, skipping build
@@ -98,6 +124,9 @@ output:
 
 ```
 ssh -p 2222 agent@localhost 'tar -C /workspace -czf - --exclude=surus/target surus' > surus-agent-run.tar.gz
+ssh -p 2222 agent@localhost 'cat /workspace/run.jsonl' > run.jsonl
+ssh -p 2222 agent@localhost 'cat /workspace/claude.version' > claude.version
+ssh -p 2222 agent@localhost 'cat /workspace/run.err' > run.err
 ```
 
 Then stop the VM; only `/workspace` survives a restart, and nothing is written
