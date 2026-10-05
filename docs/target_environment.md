@@ -15,5 +15,5 @@ The DSL targets PostgreSQL 18.
 
 Tests under `tests/dsl` expect a PostgreSQL 18 instance reachable at
 `postgres://postgres:postgres@localhost:5432/postgres`, overridable through
-`RSLICK_TEST_DATABASE_URL`. Fixtures in `tests/dsl/schema` are applied once
+`SURUS_TEST_DATABASE_URL`. Fixtures in `tests/dsl/schema` are applied once
 per run; each test runs inside a transaction that is rolled back.

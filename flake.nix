@@ -88,7 +88,7 @@
               };
               path = [ pkgs.git ];
               script = ''
-                [ -d /workspace/rslick ] || git clone /mnt/repo /workspace/rslick
+                [ -d /workspace/surus ] || git clone /mnt/repo /workspace/surus
               '';
             };
 

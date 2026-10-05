@@ -444,14 +444,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rslick"
-version = "0.1.0"
-dependencies = [
- "bytes",
- "postgres",
-]
-
-[[package]]
 name = "rustversion"
 version = "1.0.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -540,6 +532,14 @@ dependencies = [
  "unicode-bidi",
  "unicode-normalization",
  "unicode-properties",
+]
+
+[[package]]
+name = "surus"
+version = "0.1.0"
+dependencies = [
+ "bytes",
+ "postgres",
 ]
 
 [[package]]

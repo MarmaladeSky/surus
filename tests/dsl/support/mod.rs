@@ -72,7 +72,7 @@ pub struct Case {
 
 impl Case {
     pub fn new() -> Case {
-        let url = std::env::var("RSLICK_TEST_DATABASE_URL")
+        let url = std::env::var("SURUS_TEST_DATABASE_URL")
             .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/postgres".to_string());
         let mut client = Client::connect(&url, NoTls).expect("test database must be running");
         FIXTURES.call_once(|| {

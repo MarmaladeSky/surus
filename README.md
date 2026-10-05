@@ -47,5 +47,5 @@ Never modify or rewrite the specification. If the specification is ambiguous or 
 
 Focus on producing a small, working implementation in this repository.
 
-Environment: disposable NixOS VM. The repository is at `/workspace/rslick`; only `/workspace` persists across reboots. Rust 1.99.0 with clippy and rustfmt is installed. PostgreSQL 18 runs locally; `psql` connects as superuser `agent` without a password.
+Environment: disposable NixOS VM. The repository is at `/workspace/surus`; only `/workspace` persists across reboots. Rust 1.99.0 with clippy and rustfmt is installed. PostgreSQL 18 runs locally; `psql` connects as superuser `agent` without a password.
 ```

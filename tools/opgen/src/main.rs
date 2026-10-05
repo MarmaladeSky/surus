@@ -278,7 +278,7 @@ fn resolve(left: Option<&str>, right: &str) -> Vec<Signature> {
 }
 
 fn main() {
-    let url = std::env::var("RSLICK_TEST_DATABASE_URL")
+    let url = std::env::var("SURUS_TEST_DATABASE_URL")
         .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/postgres".to_string());
     let mut client = Client::connect(&url, NoTls).expect("database must be running");
     let version: String = client.query_one("SHOW server_version", &[]).unwrap().get(0);
