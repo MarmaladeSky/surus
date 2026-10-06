@@ -39,11 +39,6 @@ fn all() {
                 dsl: dsl::bytea_text,
             },
             Pair {
-                left: Some("v_char"),
-                right: "v_text",
-                dsl: dsl::char_text,
-            },
-            Pair {
                 left: Some("v_cidr"),
                 right: "v_text",
                 dsl: dsl::cidr_text,
@@ -227,11 +222,6 @@ fn all() {
                 left: Some("v_text"),
                 right: "v_bytea",
                 dsl: dsl::text_bytea,
-            },
-            Pair {
-                left: Some("v_text"),
-                right: "v_char",
-                dsl: dsl::text_char,
             },
             Pair {
                 left: Some("v_text"),

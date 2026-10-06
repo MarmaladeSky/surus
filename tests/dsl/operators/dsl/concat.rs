@@ -24,10 +24,6 @@ pub fn bytea_text() -> Query {
     Query::plain("SELECT NULL WHERE false")
 }
 
-pub fn char_text() -> Query {
-    Query::plain("SELECT NULL WHERE false")
-}
-
 pub fn cidr_text() -> Query {
     Query::plain("SELECT NULL WHERE false")
 }
@@ -173,10 +169,6 @@ pub fn text_bpchar() -> Query {
 }
 
 pub fn text_bytea() -> Query {
-    Query::plain("SELECT NULL WHERE false")
-}
-
-pub fn text_char() -> Query {
     Query::plain("SELECT NULL WHERE false")
 }
 

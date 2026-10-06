@@ -1,3 +1,4 @@
+use postgres::error::SqlState;
 use postgres::{Client, NoTls};
 use std::collections::BTreeMap;
 use std::fs;
@@ -277,6 +278,26 @@ fn resolve(left: Option<&str>, right: &str) -> Vec<Signature> {
     out
 }
 
+const UNRESOLVED: [SqlState; 2] = [SqlState::AMBIGUOUS_FUNCTION, SqlState::UNDEFINED_FUNCTION];
+
+fn accepted(client: &mut Client, symbol: &str, s: &Signature) -> bool {
+    let sql = match s.left {
+        Some(l) => format!(
+            "SELECT v_{} {symbol} v_{} FROM type_samples",
+            l.ident, s.right.ident
+        ),
+        None => format!("SELECT {symbol} v_{} FROM type_samples", s.right.ident),
+    };
+    client.batch_execute("SAVEPOINT probe").unwrap();
+    let result = client.simple_query(&sql);
+    client.batch_execute("ROLLBACK TO SAVEPOINT probe").unwrap();
+    match result {
+        Ok(_) => true,
+        Err(e) if e.code().is_some_and(|c| UNRESOLVED.contains(c)) => false,
+        Err(e) => panic!("probe failed: {e}\n{sql}"),
+    }
+}
+
 fn main() {
     let url = std::env::var("SURUS_TEST_DATABASE_URL")
         .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/postgres".to_string());
@@ -294,6 +315,13 @@ fn main() {
         )
         .unwrap();
 
+    let tests = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/dsl");
+    client.batch_execute("BEGIN").unwrap();
+    for fixture in ["custom_types.sql", "type_samples.sql"] {
+        let sql = fs::read_to_string(tests.join("schema").join(fixture)).unwrap();
+        client.batch_execute(&sql).unwrap();
+    }
+
     let names: BTreeMap<&str, &str> = NAMES.into_iter().collect();
     let mut by_operator: BTreeMap<&str, (String, Vec<Signature>)> = BTreeMap::new();
     let mut total = 0;
@@ -301,7 +329,10 @@ fn main() {
         let symbol: String = row.get(0);
         let left: Option<String> = row.get(1);
         let right: String = row.get(2);
-        let signatures = resolve(left.as_deref(), &right);
+        let signatures: Vec<Signature> = resolve(left.as_deref(), &right)
+            .into_iter()
+            .filter(|s| accepted(&mut client, &symbol, s))
+            .collect();
         if signatures.is_empty() {
             continue;
         }
@@ -315,12 +346,13 @@ fn main() {
             .1
             .extend(signatures);
     }
+    client.batch_execute("ROLLBACK").unwrap();
     for (_, signatures) in by_operator.values_mut() {
         signatures.sort_by_key(Signature::ident);
         signatures.dedup_by_key(|s| s.ident());
     }
 
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/dsl/operators");
+    let root = tests.join("operators");
     write_catalog(&root.join("catalog"), &version, &by_operator);
     write_dsl(&root.join("dsl"), &by_operator);
     println!(
