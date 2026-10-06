@@ -1,9 +1,14 @@
+// Each operator is applied to columns of `type_samples`, often the same one twice.
+#![allow(clippy::eq_op)]
+
 use crate::support::Query;
+use schema::type_samples as t;
+use surus::*;
 
 pub fn box_box() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+    t.select(t.v_box.below(t.v_box)).compile().into()
 }
 
 pub fn point_point() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+    t.select(t.v_point.below(t.v_point)).compile().into()
 }

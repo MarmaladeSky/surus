@@ -1,21 +1,50 @@
 use crate::support::Query;
+use schema::*;
+use surus::*;
 
 pub fn constructor() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+    products
+        .select((
+            row((products.name, products.price_cents)),
+            row((products.quantity, products.name)),
+        ))
+        .order_by(products.name)
+        .compile()
+        .into()
 }
 
-pub fn comparison(_price_cents: i32, _quantity: i32) -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn comparison(price_cents: i32, quantity: i32) -> Query {
+    products
+        .select(products.name)
+        .filter(row((products.price_cents, products.quantity)).gt(row((price_cents, quantity))))
+        .order_by(products.name)
+        .compile()
+        .into()
 }
 
 pub fn composite_field_access() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+    let tag = type_samples.v_price_tag;
+    type_samples
+        .select((tag.amount(), tag.currency(), tag))
+        .compile()
+        .into()
 }
 
 pub fn composite_constructor_cast() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+    let price = row((products.price_cents / Decimal::new(1000, 1), "USD")).cast::<PriceTag>();
+    let currency = row((Decimal::new(125, 2), "EUR"))
+        .cast::<PriceTag>()
+        .currency();
+    products
+        .select((price, currency))
+        .order_by(products.name)
+        .compile()
+        .into()
 }
 
 pub fn composite_expansion() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+    type_samples
+        .select(expand(type_samples.v_price_tag))
+        .compile()
+        .into()
 }

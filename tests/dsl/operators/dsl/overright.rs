@@ -1,33 +1,50 @@
+// Each operator is applied to columns of `type_samples`, often the same one twice.
+#![allow(clippy::eq_op)]
+
 use crate::support::Query;
+use schema::type_samples as t;
+use surus::*;
 
 pub fn box_box() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+    t.select(t.v_box.overright(t.v_box)).compile().into()
 }
 
 pub fn circle_circle() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+    t.select(t.v_circle.overright(t.v_circle)).compile().into()
 }
 
 pub fn int4multirange_int4multirange() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+    t.select(t.v_int4multirange.overright(t.v_int4multirange))
+        .compile()
+        .into()
 }
 
 pub fn int4multirange_int4range() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+    t.select(t.v_int4multirange.overright(t.v_int4range))
+        .compile()
+        .into()
 }
 
 pub fn int4range_int4multirange() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+    t.select(t.v_int4range.overright(t.v_int4multirange))
+        .compile()
+        .into()
 }
 
 pub fn int4range_int4range() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+    t.select(t.v_int4range.overright(t.v_int4range))
+        .compile()
+        .into()
 }
 
 pub fn polygon_polygon() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+    t.select(t.v_polygon.overright(t.v_polygon))
+        .compile()
+        .into()
 }
 
 pub fn tsrange_tsrange() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+    t.select(t.v_tsrange.overright(t.v_tsrange))
+        .compile()
+        .into()
 }

@@ -450,6 +450,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf54715a573b99ac80df0bc206da022bcd442c974952c7b9720069370852e21f"
 
 [[package]]
+name = "schema"
+version = "0.1.0"
+dependencies = [
+ "surus",
+]
+
+[[package]]
+name = "schemagen"
+version = "0.1.0"
+dependencies = [
+ "postgres",
+]
+
+[[package]]
 name = "scopeguard"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -540,6 +554,7 @@ version = "0.1.0"
 dependencies = [
  "bytes",
  "postgres",
+ "schema",
 ]
 
 [[package]]

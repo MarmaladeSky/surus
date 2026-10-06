@@ -1,9 +1,14 @@
+// Each operator is applied to columns of `type_samples`, often the same one twice.
+#![allow(clippy::eq_op)]
+
 use crate::support::Query;
+use schema::type_samples as t;
+use surus::*;
 
 pub fn bpchar_text() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+    t.select(t.v_bpchar.not_regex(t.v_text)).compile().into()
 }
 
 pub fn text_text() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+    t.select(t.v_text.not_regex(t.v_text)).compile().into()
 }

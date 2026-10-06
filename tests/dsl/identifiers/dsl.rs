@@ -1,13 +1,34 @@
 use crate::support::Query;
+use schema::*;
+use surus::*;
 
-pub fn quoted_table_and_columns(_user: &str, _selected: i32) -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn quoted_table_and_columns(user: &str, selected: i32) -> Query {
+    order
+        .insert((order.user, order.select, order.line_total))
+        .values((user, selected, Decimal::new(125, 1)))
+        .returning((
+            order.id.is_not_null().as_("Has Id"),
+            order.user,
+            order.select,
+            order.line_total,
+        ))
+        .compile()
+        .into()
 }
 
 pub fn quoted_aliases() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+    let o = alias!(order, "o");
+    o.select((o.user.as_("User Name"), o.select.as_("Select")))
+        .order_by(o.user)
+        .compile()
+        .into()
 }
 
 pub fn schema_qualified_tables() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+    app::users
+        .select(("app", app::users.name))
+        .union_all(users.select(("public", users.name)))
+        .order_by(|(schema, _)| schema)
+        .compile()
+        .into()
 }

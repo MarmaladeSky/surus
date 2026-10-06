@@ -1,13 +1,20 @@
+// Each operator is applied to columns of `type_samples`, often the same one twice.
+#![allow(clippy::eq_op)]
+
 use crate::support::Query;
+use schema::type_samples as t;
+use surus::*;
 
 pub fn box_box() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+    t.select(t.v_box.overbelow(t.v_box)).compile().into()
 }
 
 pub fn circle_circle() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+    t.select(t.v_circle.overbelow(t.v_circle)).compile().into()
 }
 
 pub fn polygon_polygon() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+    t.select(t.v_polygon.overbelow(t.v_polygon))
+        .compile()
+        .into()
 }

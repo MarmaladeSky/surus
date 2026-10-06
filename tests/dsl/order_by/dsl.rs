@@ -1,33 +1,67 @@
 use crate::support::Query;
+use schema::*;
+use surus::*;
 
 pub fn desc() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+    users
+        .select(users.name)
+        .order_by(users.name.desc())
+        .compile()
+        .into()
 }
 
 pub fn nulls_first() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+    users
+        .select((users.name, users.email))
+        .order_by((users.email.nulls_first(), users.name))
+        .compile()
+        .into()
 }
 
 pub fn desc_nulls_last() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+    users
+        .select((users.name, users.email))
+        .order_by((users.email.desc().nulls_last(), users.name))
+        .compile()
+        .into()
 }
 
 pub fn multiple_keys() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+    users
+        .select((users.group_id, users.name))
+        .order_by((users.group_id.desc(), users.name.asc()))
+        .compile()
+        .into()
 }
 
 pub fn by_expression() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+    users
+        .select((users.name, users.email))
+        .order_by((users.email.is_null(), users.name))
+        .compile()
+        .into()
 }
 
 pub fn by_position() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+    users
+        .select((users.group_id, users.name))
+        .order_by((users.group_id, users.name))
+        .compile()
+        .into()
 }
 
 pub fn collate_c() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+    users
+        .select(users.name)
+        .order_by(users.name.collate("C"))
+        .compile()
+        .into()
 }
 
 pub fn using_operator() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+    users
+        .select((users.group_id, users.name))
+        .order_by((users.group_id.using(op::Gt), users.name.using(op::Lt)))
+        .compile()
+        .into()
 }
