@@ -1,6 +1,8 @@
 mod dsl;
 
-use crate::support::{Case, rnd};
+use crate::support::{Case, compile, rnd, sql};
+use surus::Query;
+use surus::types::{Int4, Nullable, Text};
 
 fn seed_users(case: &mut Case) {
     case.exec(&format!(
@@ -36,15 +38,13 @@ fn case_searched() {
     let mut case = Case::new();
     seed_users(&mut case);
 
-    case.assert_same(
-        "SELECT name,
+    let expected: Query<(), (Text, Text)> = sql("SELECT name,
                 CASE WHEN email IS NULL THEN 'no email'
                      WHEN group_id IS NULL THEN 'no group'
                      ELSE 'complete' END
          FROM users
-         ORDER BY name",
-        dsl::case_searched,
-    );
+         ORDER BY name");
+    case.assert_same(expected, compile(dsl::case_searched), ());
 }
 
 #[test]
@@ -52,12 +52,12 @@ fn case_simple() {
     let mut case = Case::new();
     seed_products(&mut case);
 
-    case.assert_same(
+    let expected: Query<(), (Text, Text)> = sql(
         "SELECT name, CASE quantity WHEN 0 THEN 'out' WHEN 1 THEN 'last' ELSE 'in stock' END
          FROM products
          ORDER BY name",
-        dsl::case_simple,
     );
+    case.assert_same(expected, compile(dsl::case_simple), ());
 }
 
 #[test]
@@ -65,10 +65,9 @@ fn coalesce() {
     let mut case = Case::new();
     seed_users(&mut case);
 
-    case.assert_same(
-        "SELECT name, coalesce(email, name) FROM users ORDER BY name",
-        dsl::coalesce,
-    );
+    let expected: Query<(), (Text, Text)> =
+        sql("SELECT name, coalesce(email, name) FROM users ORDER BY name");
+    case.assert_same(expected, compile(dsl::coalesce), ());
 }
 
 #[test]
@@ -76,10 +75,9 @@ fn nullif() {
     let mut case = Case::new();
     seed_products(&mut case);
 
-    case.assert_same(
-        "SELECT name, nullif(quantity, 0) FROM products ORDER BY name",
-        dsl::nullif,
-    );
+    let expected: Query<(), (Text, Nullable<Int4>)> =
+        sql("SELECT name, nullif(quantity, 0) FROM products ORDER BY name");
+    case.assert_same(expected, compile(dsl::nullif), ());
 }
 
 #[test]
@@ -87,12 +85,12 @@ fn greatest_least() {
     let mut case = Case::new();
     seed_products(&mut case);
 
-    case.assert_same(
+    let expected: Query<(), (Text, Int4, Int4)> = sql(
         "SELECT name, greatest(price_cents, quantity * 100), least(price_cents, quantity * 100)
          FROM products
          ORDER BY name",
-        dsl::greatest_least,
     );
+    case.assert_same(expected, compile(dsl::greatest_least), ());
 }
 
 #[test]
@@ -100,8 +98,8 @@ fn case_into_arithmetic() {
     let mut case = Case::new();
     seed_products(&mut case);
 
-    case.assert_same(
+    let expected: Query<(), (Text, Int4)> = sql(
         "SELECT name, (CASE WHEN quantity > 0 THEN price_cents ELSE 0 END) + 1 FROM products ORDER BY name",
-        dsl::case_into_arithmetic,
     );
+    case.assert_same(expected, compile(dsl::case_into_arithmetic), ());
 }

@@ -1,6 +1,8 @@
 mod dsl;
 
-use crate::support::{Case, rnd};
+use crate::support::{Case, compile, rnd, sql};
+use surus::Query;
+use surus::types::{Int8, Nullable, Text};
 
 #[test]
 fn user_and_group_names() {
@@ -14,10 +16,9 @@ fn user_and_group_names() {
         rnd::text(),
     ));
 
-    case.assert_same(
-        "SELECT name FROM users UNION SELECT name FROM groups ORDER BY name",
-        dsl::user_and_group_names,
-    );
+    let expected: Query<(), (Text,)> =
+        sql("SELECT name FROM users UNION SELECT name FROM groups ORDER BY name");
+    case.assert_same(expected, compile(dsl::user_and_group_names), ());
 }
 
 fn seed_overlap(case: &mut Case) {
@@ -35,10 +36,9 @@ fn union_all_keeps_duplicates() {
     let mut case = Case::new();
     seed_overlap(&mut case);
 
-    case.assert_same(
-        "SELECT name FROM users UNION ALL SELECT name FROM groups ORDER BY name",
-        dsl::union_all_keeps_duplicates,
-    );
+    let expected: Query<(), (Text,)> =
+        sql("SELECT name FROM users UNION ALL SELECT name FROM groups ORDER BY name");
+    case.assert_same(expected, compile(dsl::union_all_keeps_duplicates), ());
 }
 
 #[test]
@@ -46,10 +46,9 @@ fn intersect() {
     let mut case = Case::new();
     seed_overlap(&mut case);
 
-    case.assert_same(
-        "SELECT name FROM users INTERSECT SELECT name FROM groups ORDER BY name",
-        dsl::intersect,
-    );
+    let expected: Query<(), (Text,)> =
+        sql("SELECT name FROM users INTERSECT SELECT name FROM groups ORDER BY name");
+    case.assert_same(expected, compile(dsl::intersect), ());
 }
 
 #[test]
@@ -57,10 +56,9 @@ fn except() {
     let mut case = Case::new();
     seed_overlap(&mut case);
 
-    case.assert_same(
-        "SELECT name FROM users EXCEPT SELECT name FROM groups ORDER BY name",
-        dsl::except,
-    );
+    let expected: Query<(), (Text,)> =
+        sql("SELECT name FROM users EXCEPT SELECT name FROM groups ORDER BY name");
+    case.assert_same(expected, compile(dsl::except), ());
 }
 
 #[test]
@@ -68,13 +66,11 @@ fn parenthesized_with_limits() {
     let mut case = Case::new();
     seed_overlap(&mut case);
 
-    case.assert_same(
-        "(SELECT name FROM users ORDER BY name LIMIT 1)
+    let expected: Query<(), (Text,)> = sql("(SELECT name FROM users ORDER BY name LIMIT 1)
          UNION
          (SELECT name FROM groups ORDER BY name DESC LIMIT 1)
-         ORDER BY name",
-        dsl::parenthesized_with_limits,
-    );
+         ORDER BY name");
+    case.assert_same(expected, compile(dsl::parenthesized_with_limits), ());
 }
 
 #[test]
@@ -87,10 +83,10 @@ fn union_nullable_with_not_null() {
         rnd::text(),
     ));
 
-    case.assert_same(
+    let expected: Query<(), (Nullable<Text>,)> = sql(
         "SELECT name FROM users UNION SELECT email FROM users WHERE email IS NOT NULL ORDER BY name",
-        dsl::union_nullable_with_not_null,
     );
+    case.assert_same(expected, compile(dsl::union_nullable_with_not_null), ());
 }
 
 #[test]
@@ -98,10 +94,9 @@ fn set_op_in_from() {
     let mut case = Case::new();
     seed_overlap(&mut case);
 
-    case.assert_same(
-        "SELECT count(*) FROM (SELECT name FROM users UNION SELECT name FROM groups) s",
-        dsl::set_op_in_from,
-    );
+    let expected: Query<(), (Int8,)> =
+        sql("SELECT count(*) FROM (SELECT name FROM users UNION SELECT name FROM groups) s");
+    case.assert_same(expected, compile(dsl::set_op_in_from), ());
 }
 
 #[test]
@@ -109,11 +104,11 @@ fn set_op_as_cte() {
     let mut case = Case::new();
     seed_overlap(&mut case);
 
-    case.assert_same(
+    let expected: Query<(), (Text,)> = sql(
         "WITH names AS (SELECT name FROM users EXCEPT SELECT name FROM groups)
          SELECT name || '!' FROM names ORDER BY 1",
-        dsl::set_op_as_cte,
     );
+    case.assert_same(expected, compile(dsl::set_op_as_cte), ());
 }
 
 #[test]
@@ -128,11 +123,9 @@ fn nested_precedence() {
         rnd::text(),
     ));
 
-    case.assert_same(
-        "SELECT name FROM users
+    let expected: Query<(), (Nullable<Text>,)> = sql("SELECT name FROM users
          UNION
          (SELECT name FROM groups INTERSECT SELECT email FROM users)
-         ORDER BY name",
-        dsl::nested_precedence,
-    );
+         ORDER BY name");
+    case.assert_same(expected, compile(dsl::nested_precedence), ());
 }

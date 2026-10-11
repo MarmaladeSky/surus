@@ -1,6 +1,8 @@
 mod dsl;
 
-use crate::support::{Case, rnd};
+use crate::support::{Case, compile, rnd, sql};
+use surus::Query;
+use surus::types::{Int8, Text};
 
 #[test]
 fn by_name() {
@@ -12,8 +14,6 @@ fn by_name() {
         "INSERT INTO users (name) VALUES ('{wanted}'), ('{other}')"
     ));
 
-    case.assert_same(
-        &format!("SELECT id, name FROM users WHERE name = '{wanted}'"),
-        || dsl::by_name(&wanted),
-    );
+    let expected: Query<(Text,), (Int8, Text)> = sql("SELECT id, name FROM users WHERE name = $1");
+    case.assert_same(expected, compile(dsl::by_name), (&wanted,));
 }

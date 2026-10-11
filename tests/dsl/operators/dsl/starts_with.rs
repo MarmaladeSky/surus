@@ -1,5 +1,7 @@
-use crate::support::Query;
+use crate::support::placeholder;
+use surus::Query;
+use surus::types as t;
 
-pub fn text_text() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn text_text() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }

@@ -1,37 +1,39 @@
-use crate::support::Query;
+use crate::support::placeholder;
+use surus::Query;
+use surus::types as t;
 
-pub fn bit_bit() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn bit_bit() -> Query<(), (t::Nullable<t::Bit>,)> {
+    placeholder()
 }
 
-pub fn box_box() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn box_box() -> Query<(), (t::Nullable<t::PgBox>,)> {
+    placeholder()
 }
 
-pub fn int2_int2() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn int2_int2() -> Query<(), (t::Nullable<t::Int2>,)> {
+    placeholder()
 }
 
-pub fn int4_int4() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn int4_int4() -> Query<(), (t::Nullable<t::Int4>,)> {
+    placeholder()
 }
 
-pub fn int8_int8() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn int8_int8() -> Query<(), (t::Nullable<t::Int8>,)> {
+    placeholder()
 }
 
-pub fn line_line() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn line_line() -> Query<(), (t::Nullable<t::Point>,)> {
+    placeholder()
 }
 
-pub fn lseg_lseg() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn lseg_lseg() -> Query<(), (t::Nullable<t::Point>,)> {
+    placeholder()
 }
 
-pub fn path() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn path() -> Query<(), (t::Nullable<t::Int4>,)> {
+    placeholder()
 }
 
-pub fn polygon() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn polygon() -> Query<(), (t::Nullable<t::Int4>,)> {
+    placeholder()
 }

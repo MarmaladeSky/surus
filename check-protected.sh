@@ -14,7 +14,7 @@ mkdir "$work"
 tar -xzf "$archive" -C "$work"
 
 protected=(README.md docs tests)
-editable='^M\ttests/dsl/([a-z_]+/dsl|operators/dsl/[a-z0-9_]+)[.]rs$'
+editable='^M\ttests/dsl/(schema|[a-z_]+/dsl|operators/dsl/[a-z0-9_]+)[.]rs$'
 
 run_git() {
     GIT_INDEX_FILE="$work/index" git --work-tree="$work/surus" "$@"

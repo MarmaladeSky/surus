@@ -1,13 +1,15 @@
-use crate::support::Query;
+use crate::support::placeholder;
+use surus::Query;
+use surus::types as t;
 
-pub fn bpchar_text() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn bpchar_text() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn bytea_bytea() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn bytea_bytea() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn text_text() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn text_text() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }

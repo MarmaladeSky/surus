@@ -1,205 +1,207 @@
-use crate::support::Query;
+use crate::support::placeholder;
+use surus::Query;
+use surus::types as t;
 
-pub fn bit_bit() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn bit_bit() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn bool_bool() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn bool_bool() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn bpchar_bpchar() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn bpchar_bpchar() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn bytea_bytea() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn bytea_bytea() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn char_char() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn char_char() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn circle_circle() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn circle_circle() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn date_date() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn date_date() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn date_timestamp() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn date_timestamp() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn date_timestamptz() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn date_timestamptz() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn float4_float4() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn float4_float4() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn float4_float8() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn float4_float8() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn float8_float4() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn float8_float4() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn float8_float8() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn float8_float8() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn inet_inet() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn inet_inet() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn int2_int2() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn int2_int2() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn int2_int4() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn int2_int4() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn int2_int8() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn int2_int8() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn int4_array_int4_array() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn int4_array_int4_array() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn int4_int2() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn int4_int2() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn int4_int4() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn int4_int4() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn int4_int8() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn int4_int8() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn int4multirange_int4multirange() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn int4multirange_int4multirange() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn int4range_int4range() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn int4range_int4range() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn int8_int2() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn int8_int2() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn int8_int4() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn int8_int4() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn int8_int8() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn int8_int8() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn interval_interval() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn interval_interval() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn jsonb_jsonb() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn jsonb_jsonb() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn lseg_lseg() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn lseg_lseg() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn macaddr8_macaddr8() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn macaddr8_macaddr8() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn macaddr_macaddr() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn macaddr_macaddr() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn money_money() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn money_money() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn mood_mood() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn mood_mood() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn numeric_numeric() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn numeric_numeric() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn point_point() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn point_point() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn price_tag_price_tag() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn price_tag_price_tag() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn text_array_text_array() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn text_array_text_array() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn text_text() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn text_text() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn time_time() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn time_time() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn timestamp_date() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn timestamp_date() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn timestamp_timestamp() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn timestamp_timestamp() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn timestamp_timestamptz() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn timestamp_timestamptz() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn timestamptz_date() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn timestamptz_date() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn timestamptz_timestamp() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn timestamptz_timestamp() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn timestamptz_timestamptz() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn timestamptz_timestamptz() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn timetz_timetz() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn timetz_timetz() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn tsquery_tsquery() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn tsquery_tsquery() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn tsrange_tsrange() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn tsrange_tsrange() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn tsvector_tsvector() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn tsvector_tsvector() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn uuid_uuid() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn uuid_uuid() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn varbit_varbit() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn varbit_varbit() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }

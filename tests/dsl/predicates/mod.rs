@@ -1,6 +1,8 @@
 mod dsl;
 
-use crate::support::{Case, rnd};
+use crate::support::{Case, compile, rnd, sql};
+use surus::Query;
+use surus::types::{Bool, Int4, Int8, Nullable, Numeric, Text};
 
 struct Users {
     alpha: String,
@@ -48,13 +50,11 @@ fn and_or_not() {
     let mut case = Case::new();
     seed_users(&mut case);
 
-    case.assert_same(
-        "SELECT name FROM users
+    let expected: Query<(), (Text,)> = sql("SELECT name FROM users
          WHERE (email IS NOT NULL AND group_id IS NOT NULL)
             OR NOT (name LIKE 'alpha%' OR name LIKE 'Beta%')
-         ORDER BY name",
-        dsl::and_or_not,
-    );
+         ORDER BY name");
+    case.assert_same(expected, compile(dsl::and_or_not), ());
 }
 
 #[test]
@@ -62,10 +62,9 @@ fn is_null() {
     let mut case = Case::new();
     seed_users(&mut case);
 
-    case.assert_same(
-        "SELECT name, email IS NULL, group_id IS NOT NULL FROM users ORDER BY name",
-        dsl::is_null,
-    );
+    let expected: Query<(), (Text, Bool, Bool)> =
+        sql("SELECT name, email IS NULL, group_id IS NOT NULL FROM users ORDER BY name");
+    case.assert_same(expected, compile(dsl::is_null), ());
 }
 
 #[test]
@@ -73,13 +72,13 @@ fn is_distinct_from() {
     let mut case = Case::new();
     seed_users(&mut case);
 
-    case.assert_same(
+    let expected: Query<(), (Text, Text, Bool)> = sql(
         "SELECT a.name, b.name, a.group_id IS NOT DISTINCT FROM b.group_id
          FROM users a JOIN users b ON a.name < b.name
          WHERE a.email IS DISTINCT FROM b.email
          ORDER BY 1, 2",
-        dsl::is_distinct_from,
     );
+    case.assert_same(expected, compile(dsl::is_distinct_from), ());
 }
 
 #[test]
@@ -87,12 +86,10 @@ fn is_true() {
     let mut case = Case::new();
     seed_users(&mut case);
 
-    case.assert_same(
-        "SELECT name, (email IS NULL) IS TRUE, (group_id > 0) IS NOT FALSE, (group_id > 0) IS UNKNOWN
+    let expected: Query<(), (Text, Bool, Bool, Bool)> = sql("SELECT name, (email IS NULL) IS TRUE, (group_id > 0) IS NOT FALSE, (group_id > 0) IS UNKNOWN
          FROM users
-         ORDER BY name",
-        dsl::is_true,
-    );
+         ORDER BY name");
+    case.assert_same(expected, compile(dsl::is_true), ());
 }
 
 #[test]
@@ -100,10 +97,9 @@ fn between() {
     let mut case = Case::new();
     seed_products(&mut case);
 
-    case.assert_same(
-        "SELECT name FROM products WHERE price_cents BETWEEN 300 AND 599 ORDER BY name",
-        || dsl::between(300, 599),
-    );
+    let expected: Query<(), (Text,)> =
+        sql("SELECT name FROM products WHERE price_cents BETWEEN 300 AND 599 ORDER BY name");
+    case.assert_same(expected, compile(|| dsl::between(300, 599)), ());
 }
 
 #[test]
@@ -111,12 +107,12 @@ fn in_list() {
     let mut case = Case::new();
     let users = seed_users(&mut case);
 
+    let expected: Query<(Text, Text), (Text,)> =
+        sql("SELECT name FROM users WHERE name IN ($1, $2) ORDER BY name");
     case.assert_same(
-        &format!(
-            "SELECT name FROM users WHERE name IN ('{}', '{}') ORDER BY name",
-            users.alpha, users.gamma
-        ),
-        || dsl::in_list(&users.alpha, &users.gamma),
+        expected,
+        compile(dsl::in_list),
+        (&users.alpha, &users.gamma),
     );
 }
 
@@ -125,10 +121,9 @@ fn like() {
     let mut case = Case::new();
     seed_users(&mut case);
 
-    case.assert_same(
-        "SELECT name FROM users WHERE name LIKE 'alpha%' ORDER BY name",
-        || dsl::like("alpha%"),
-    );
+    let expected: Query<(), (Text,)> =
+        sql("SELECT name FROM users WHERE name LIKE 'alpha%' ORDER BY name");
+    case.assert_same(expected, compile(|| dsl::like("alpha%")), ());
 }
 
 #[test]
@@ -136,10 +131,9 @@ fn ilike() {
     let mut case = Case::new();
     seed_users(&mut case);
 
-    case.assert_same(
-        "SELECT name FROM users WHERE name ILIKE 'beta%' ORDER BY name",
-        || dsl::ilike("beta%"),
-    );
+    let expected: Query<(), (Text,)> =
+        sql("SELECT name FROM users WHERE name ILIKE 'beta%' ORDER BY name");
+    case.assert_same(expected, compile(|| dsl::ilike("beta%")), ());
 }
 
 #[test]
@@ -147,10 +141,9 @@ fn similar_to() {
     let mut case = Case::new();
     seed_users(&mut case);
 
-    case.assert_same(
-        "SELECT name FROM users WHERE name SIMILAR TO '(alpha|gamma)%' ORDER BY name",
-        || dsl::similar_to("(alpha|gamma)%"),
-    );
+    let expected: Query<(), (Text,)> =
+        sql("SELECT name FROM users WHERE name SIMILAR TO '(alpha|gamma)%' ORDER BY name");
+    case.assert_same(expected, compile(|| dsl::similar_to("(alpha|gamma)%")), ());
 }
 
 #[test]
@@ -163,9 +156,12 @@ fn like_escape() {
         rnd::text(),
     ));
 
+    let expected: Query<(), (Text,)> =
+        sql("SELECT name FROM users WHERE name LIKE '100!%!_done%' ESCAPE '!' ORDER BY name");
     case.assert_same(
-        "SELECT name FROM users WHERE name LIKE '100!%!_done%' ESCAPE '!' ORDER BY name",
-        || dsl::like_escape("100!%!_done%", "!"),
+        expected,
+        compile(|| dsl::like_escape("100!%!_done%", "!")),
+        (),
     );
 }
 
@@ -174,10 +170,10 @@ fn between_symmetric() {
     let mut case = Case::new();
     seed_products(&mut case);
 
-    case.assert_same(
+    let expected: Query<(), (Text,)> = sql(
         "SELECT name FROM products WHERE price_cents BETWEEN SYMMETRIC 599 AND 300 ORDER BY name",
-        || dsl::between_symmetric(599, 300),
     );
+    case.assert_same(expected, compile(|| dsl::between_symmetric(599, 300)), ());
 }
 
 #[test]
@@ -189,13 +185,11 @@ fn overlaps() {
         crate::support::literal::timestamp(),
     ));
 
-    case.assert_same(
-        "SELECT (v_date, v_date + 10) OVERLAPS (v_date + 5, v_date + 20),
+    let expected: Query<(), (Nullable<Bool>, Nullable<Bool>, Nullable<Bool>)> = sql("SELECT (v_date, v_date + 10) OVERLAPS (v_date + 5, v_date + 20),
                 (v_date, v_date + 10) OVERLAPS (v_date + 10, v_date + 20),
                 (v_timestamp, INTERVAL '1 day') OVERLAPS (v_timestamp + INTERVAL '2 days', INTERVAL '1 day')
-         FROM type_samples",
-        dsl::overlaps,
-    );
+         FROM type_samples");
+    case.assert_same(expected, compile(dsl::overlaps), ());
 }
 
 fn seed_type_samples(case: &mut Case) {
@@ -211,10 +205,9 @@ fn arithmetic_chain() {
     let mut case = Case::new();
     seed_products(&mut case);
 
-    case.assert_same(
-        "SELECT name, (price_cents + quantity) * 2 - 1 FROM products ORDER BY name",
-        dsl::arithmetic_chain,
-    );
+    let expected: Query<(), (Text, Int4)> =
+        sql("SELECT name, (price_cents + quantity) * 2 - 1 FROM products ORDER BY name");
+    case.assert_same(expected, compile(dsl::arithmetic_chain), ());
 }
 
 #[test]
@@ -222,10 +215,9 @@ fn arithmetic_nullable_column() {
     let mut case = Case::new();
     seed_users(&mut case);
 
-    case.assert_same(
-        "SELECT name, group_id + 1 FROM users ORDER BY name",
-        dsl::arithmetic_nullable_column,
-    );
+    let expected: Query<(), (Text, Nullable<Int8>)> =
+        sql("SELECT name, group_id + 1 FROM users ORDER BY name");
+    case.assert_same(expected, compile(dsl::arithmetic_nullable_column), ());
 }
 
 #[test]
@@ -233,10 +225,9 @@ fn arithmetic_mixed_nullability() {
     let mut case = Case::new();
     seed_users(&mut case);
 
-    case.assert_same(
-        "SELECT name, group_id * id FROM users ORDER BY name",
-        dsl::arithmetic_mixed_nullability,
-    );
+    let expected: Query<(), (Text, Nullable<Int8>)> =
+        sql("SELECT name, group_id * id FROM users ORDER BY name");
+    case.assert_same(expected, compile(dsl::arithmetic_mixed_nullability), ());
 }
 
 #[test]
@@ -244,10 +235,9 @@ fn negate_expression() {
     let mut case = Case::new();
     seed_products(&mut case);
 
-    case.assert_same(
-        "SELECT name, -(price_cents - quantity) FROM products ORDER BY name",
-        dsl::negate_expression,
-    );
+    let expected: Query<(), (Text, Int4)> =
+        sql("SELECT name, -(price_cents - quantity) FROM products ORDER BY name");
+    case.assert_same(expected, compile(dsl::negate_expression), ());
 }
 
 #[test]
@@ -255,10 +245,10 @@ fn compare_expressions() {
     let mut case = Case::new();
     seed_products(&mut case);
 
-    case.assert_same(
+    let expected: Query<(), (Text,)> = sql(
         "SELECT name FROM products WHERE price_cents * quantity > total_cents - 1 ORDER BY name",
-        dsl::compare_expressions,
     );
+    case.assert_same(expected, compile(dsl::compare_expressions), ());
 }
 
 #[test]
@@ -266,12 +256,10 @@ fn bool_mixed_nullability() {
     let mut case = Case::new();
     seed_users(&mut case);
 
-    case.assert_same(
-        "SELECT name FROM users
+    let expected: Query<(), (Text,)> = sql("SELECT name FROM users
          WHERE (name <> '' AND email LIKE 'v%') OR group_id IS NULL
-         ORDER BY name",
-        dsl::bool_mixed_nullability,
-    );
+         ORDER BY name");
+    case.assert_same(expected, compile(dsl::bool_mixed_nullability), ());
 }
 
 #[test]
@@ -279,10 +267,10 @@ fn operator_results_combined() {
     let mut case = Case::new();
     seed_type_samples(&mut case);
 
-    case.assert_same(
+    let expected: Query<(), (Nullable<Int4>, Nullable<Bool>)> = sql(
         "SELECT v_int4, (v_int4range @> v_int4) AND (v_box && v_box) FROM type_samples ORDER BY v_int4",
-        dsl::operator_results_combined,
     );
+    case.assert_same(expected, compile(dsl::operator_results_combined), ());
 }
 
 #[test]
@@ -290,10 +278,9 @@ fn json_chain_into_text_op() {
     let mut case = Case::new();
     seed_type_samples(&mut case);
 
-    case.assert_same(
-        "SELECT (v_jsonb -> 'a' ->> 'b') || 'x' FROM type_samples ORDER BY v_int4",
-        dsl::json_chain_into_text_op,
-    );
+    let expected: Query<(), (Nullable<Text>,)> =
+        sql("SELECT (v_jsonb -> 'a' ->> 'b') || 'x' FROM type_samples ORDER BY v_int4");
+    case.assert_same(expected, compile(dsl::json_chain_into_text_op), ());
 }
 
 #[test]
@@ -301,8 +288,7 @@ fn cast_of_expression() {
     let mut case = Case::new();
     seed_products(&mut case);
 
-    case.assert_same(
-        "SELECT name, (price_cents * quantity)::numeric / 100 FROM products ORDER BY name",
-        dsl::cast_of_expression,
-    );
+    let expected: Query<(), (Text, Numeric)> =
+        sql("SELECT name, (price_cents * quantity)::numeric / 100 FROM products ORDER BY name");
+    case.assert_same(expected, compile(dsl::cast_of_expression), ());
 }

@@ -1,6 +1,8 @@
 mod dsl;
 
-use crate::support::{Case, rnd};
+use crate::support::{Case, compile, rnd, sql};
+use surus::Query;
+use surus::types::{Bool, Int4, Int8, Nullable, Text};
 
 const DEPTH: usize = 30;
 
@@ -18,13 +20,11 @@ fn users_with_group() {
          INSERT INTO users (name) VALUES ('{loner}');"
     ));
 
-    case.assert_same(
-        "SELECT users.name, groups.name
+    let expected: Query<(), (Text, Text)> = sql("SELECT users.name, groups.name
          FROM users
          JOIN groups ON groups.id = users.group_id
-         ORDER BY users.name",
-        dsl::users_with_group,
-    );
+         ORDER BY users.name");
+    case.assert_same(expected, compile(dsl::users_with_group), ());
 }
 
 #[test]
@@ -48,8 +48,43 @@ fn group_ancestor_30_levels() {
         .collect();
     let plain = format!("SELECT g0.name, g{DEPTH}.name FROM groups g0\n{joins}");
 
-    case.assert_same(&plain, dsl::group_ancestor_30_levels);
+    let expected: Query<(), (Text, Text)> = sql(&plain);
+    case.assert_same(expected, compile(dsl::group_ancestor_30_levels), ());
 }
+
+type Logins = (
+    Text,
+    Int4,
+    Int4,
+    Int4,
+    Int4,
+    Int4,
+    Int4,
+    Int4,
+    Int4,
+    Int4,
+    Int4,
+    Int4,
+    Int4,
+    Int4,
+    Int4,
+    Int4,
+    Int4,
+    Int4,
+    Int4,
+    Int4,
+    Int4,
+    Int4,
+    Int4,
+    Int4,
+    Int4,
+    Int4,
+    Int4,
+    Int4,
+    Int4,
+    Int4,
+    Int4,
+);
 
 #[test]
 fn logins_30_day_pivot() {
@@ -75,7 +110,8 @@ fn logins_30_day_pivot() {
         .collect();
     let plain = format!("SELECT users.name{columns} FROM users\n{joins}ORDER BY users.name");
 
-    case.assert_same(&plain, dsl::logins_30_day_pivot);
+    let expected: Query<(), Logins> = sql(&plain);
+    case.assert_same(expected, compile(dsl::logins_30_day_pivot), ());
 }
 
 fn seed_groups(case: &mut Case) {
@@ -117,13 +153,11 @@ fn left_join() {
     let mut case = Case::new();
     seed_groups(&mut case);
 
-    case.assert_same(
-        "SELECT users.name, groups.name
+    let expected: Query<(), (Text, Nullable<Text>)> = sql("SELECT users.name, groups.name
          FROM users
          LEFT JOIN groups ON groups.id = users.group_id
-         ORDER BY users.name",
-        dsl::left_join,
-    );
+         ORDER BY users.name");
+    case.assert_same(expected, compile(dsl::left_join), ());
 }
 
 #[test]
@@ -131,13 +165,13 @@ fn left_join_null_propagation() {
     let mut case = Case::new();
     seed_groups(&mut case);
 
-    case.assert_same(
+    let expected: Query<(), (Text, Text, Bool)> = sql(
         "SELECT users.name, coalesce(groups.name, '<none>'), groups.id IS NULL
          FROM users
          LEFT JOIN groups ON groups.id = users.group_id
          ORDER BY users.name",
-        dsl::left_join_null_propagation,
     );
+    case.assert_same(expected, compile(dsl::left_join_null_propagation), ());
 }
 
 #[test]
@@ -145,13 +179,11 @@ fn right_join() {
     let mut case = Case::new();
     seed_groups(&mut case);
 
-    case.assert_same(
-        "SELECT users.name, groups.name
+    let expected: Query<(), (Nullable<Text>, Text)> = sql("SELECT users.name, groups.name
          FROM users
          RIGHT JOIN groups ON groups.id = users.group_id
-         ORDER BY groups.name, users.name",
-        dsl::right_join,
-    );
+         ORDER BY groups.name, users.name");
+    case.assert_same(expected, compile(dsl::right_join), ());
 }
 
 #[test]
@@ -159,13 +191,12 @@ fn full_join() {
     let mut case = Case::new();
     seed_groups(&mut case);
 
-    case.assert_same(
-        "SELECT users.name, groups.name
+    let expected: Query<(), (Nullable<Text>, Nullable<Text>)> =
+        sql("SELECT users.name, groups.name
          FROM users
          FULL JOIN groups ON groups.id = users.group_id
-         ORDER BY groups.name, users.name",
-        dsl::full_join,
-    );
+         ORDER BY groups.name, users.name");
+    case.assert_same(expected, compile(dsl::full_join), ());
 }
 
 #[test]
@@ -173,10 +204,9 @@ fn cross_join() {
     let mut case = Case::new();
     seed_groups(&mut case);
 
-    case.assert_same(
-        "SELECT users.name, groups.name FROM users CROSS JOIN groups ORDER BY 1, 2",
-        dsl::cross_join,
-    );
+    let expected: Query<(), (Text, Text)> =
+        sql("SELECT users.name, groups.name FROM users CROSS JOIN groups ORDER BY 1, 2");
+    case.assert_same(expected, compile(dsl::cross_join), ());
 }
 
 #[test]
@@ -184,12 +214,10 @@ fn natural_join() {
     let mut case = Case::new();
     seed_extensions(&mut case);
 
-    case.assert_same(
-        "SELECT user_id, bio, theme
+    let expected: Query<(), (Int8, Text, Text)> = sql("SELECT user_id, bio, theme
          FROM user_profiles NATURAL JOIN user_settings
-         ORDER BY user_id",
-        dsl::natural_join,
-    );
+         ORDER BY user_id");
+    case.assert_same(expected, compile(dsl::natural_join), ());
 }
 
 #[test]
@@ -197,12 +225,10 @@ fn join_using() {
     let mut case = Case::new();
     seed_extensions(&mut case);
 
-    case.assert_same(
-        "SELECT user_id, bio, theme
+    let expected: Query<(), (Int8, Text, Nullable<Text>)> = sql("SELECT user_id, bio, theme
          FROM user_profiles LEFT JOIN user_settings USING (user_id)
-         ORDER BY user_id",
-        dsl::join_using,
-    );
+         ORDER BY user_id");
+    case.assert_same(expected, compile(dsl::join_using), ());
 }
 
 #[test]
@@ -210,15 +236,13 @@ fn lateral_first_user_per_group() {
     let mut case = Case::new();
     seed_groups(&mut case);
 
-    case.assert_same(
-        "SELECT g.name, u.name
+    let expected: Query<(), (Text, Nullable<Text>)> = sql("SELECT g.name, u.name
          FROM groups g
          LEFT JOIN LATERAL (
              SELECT name FROM users WHERE users.group_id = g.id ORDER BY name LIMIT 1
          ) u ON true
-         ORDER BY g.name",
-        dsl::lateral_first_user_per_group,
-    );
+         ORDER BY g.name");
+    case.assert_same(expected, compile(dsl::lateral_first_user_per_group), ());
 }
 
 #[test]
@@ -226,14 +250,12 @@ fn subquery_in_from() {
     let mut case = Case::new();
     seed_groups(&mut case);
 
-    case.assert_same(
-        "SELECT g.name, c.n
+    let expected: Query<(), (Text, Int8)> = sql("SELECT g.name, c.n
          FROM groups g
          JOIN (SELECT group_id, count(*) AS n FROM users GROUP BY group_id) c
              ON c.group_id = g.id
-         ORDER BY g.name",
-        dsl::subquery_in_from,
-    );
+         ORDER BY g.name");
+    case.assert_same(expected, compile(dsl::subquery_in_from), ());
 }
 
 #[test]
@@ -245,10 +267,9 @@ fn tablesample_repeatable() {
         names.join(", ")
     ));
 
-    case.assert_same(
-        "SELECT name FROM users TABLESAMPLE BERNOULLI (50) REPEATABLE (42) ORDER BY name",
-        dsl::tablesample_repeatable,
-    );
+    let expected: Query<(), (Text,)> =
+        sql("SELECT name FROM users TABLESAMPLE BERNOULLI (50) REPEATABLE (42) ORDER BY name");
+    case.assert_same(expected, compile(dsl::tablesample_repeatable), ());
 }
 
 #[test]
@@ -256,13 +277,11 @@ fn with_ordinality() {
     let mut case = Case::new();
     seed_groups(&mut case);
 
-    case.assert_same(
-        "SELECT u.name, w.part, w.ord
+    let expected: Query<(), (Text, Text, Int8)> = sql("SELECT u.name, w.part, w.ord
          FROM users u
          CROSS JOIN LATERAL unnest(string_to_array(u.name, '0')) WITH ORDINALITY AS w(part, ord)
-         ORDER BY u.name, w.ord",
-        dsl::with_ordinality,
-    );
+         ORDER BY u.name, w.ord");
+    case.assert_same(expected, compile(dsl::with_ordinality), ());
 }
 
 #[test]
@@ -270,9 +289,13 @@ fn set_returning_function_in_from() {
     let mut case = Case::new();
     seed_groups(&mut case);
 
-    case.assert_same(
+    let expected: Query<(), (Text, Int4)> = sql(
         "SELECT users.name, s.day FROM users CROSS JOIN generate_series(1, 3) AS s(day) ORDER BY 1, 2",
-        || dsl::set_returning_function_in_from(1, 3),
+    );
+    case.assert_same(
+        expected,
+        compile(|| dsl::set_returning_function_in_from(1, 3)),
+        (),
     );
 }
 
@@ -281,14 +304,13 @@ fn rows_from_multiple_functions() {
     let mut case = Case::new();
     seed_groups(&mut case);
 
-    case.assert_same(
-        "SELECT u.name, r.n, r.part, r.ord
+    let expected: Query<(), (Text, Nullable<Int4>, Nullable<Text>, Int8)> =
+        sql("SELECT u.name, r.n, r.part, r.ord
          FROM users u
          CROSS JOIN LATERAL ROWS FROM (generate_series(1, 2), unnest(string_to_array(u.name, '0')))
              WITH ORDINALITY AS r(n, part, ord)
-         ORDER BY u.name, r.ord",
-        dsl::rows_from_multiple_functions,
-    );
+         ORDER BY u.name, r.ord");
+    case.assert_same(expected, compile(dsl::rows_from_multiple_functions), ());
 }
 
 fn unique_id() -> i64 {
@@ -308,14 +330,15 @@ fn function_columns_in_join_on() {
         rnd::text(),
     ));
 
+    let expected: Query<(Int8, Int8), (Text, Int8)> = sql(
+        "SELECT u.name, s.n FROM generate_series($1::int8, $2::int8) AS s(n)
+         JOIN users u ON u.id = s.n
+         ORDER BY s.n",
+    );
     case.assert_same(
-        &format!(
-            "SELECT u.name, s.n FROM generate_series({base}::int8, {}::int8) AS s(n)
-             JOIN users u ON u.id = s.n
-             ORDER BY s.n",
-            base + 2
-        ),
-        || dsl::function_columns_in_join_on(base, base + 2),
+        expected,
+        compile(dsl::function_columns_in_join_on),
+        (base, base + 2),
     );
 }
 
@@ -328,13 +351,11 @@ fn ordinality_column_in_where() {
         rnd::text(),
     ));
 
-    case.assert_same(
-        "SELECT u.name, w.part FROM users u
+    let expected: Query<(), (Text, Text)> = sql("SELECT u.name, w.part FROM users u
          CROSS JOIN LATERAL unnest(string_to_array(u.name, '0')) WITH ORDINALITY AS w(part, ord)
          WHERE w.ord > 1
-         ORDER BY u.name, w.ord",
-        dsl::ordinality_column_in_where,
-    );
+         ORDER BY u.name, w.ord");
+    case.assert_same(expected, compile(dsl::ordinality_column_in_where), ());
 }
 
 #[test]
@@ -350,13 +371,13 @@ fn values_in_from_joined() {
         rnd::text(),
     ));
 
+    let expected: Query<(Int8, Int8), (Text, Text)> = sql("SELECT u.name, v.label FROM users u
+         JOIN (VALUES ($1::int8, 'a'), ($2::int8, 'b')) AS v(id, label) ON v.id = u.id
+         ORDER BY v.label");
     case.assert_same(
-        &format!(
-            "SELECT u.name, v.label FROM users u
-             JOIN (VALUES ({first}::int8, 'a'), ({second}::int8, 'b')) AS v(id, label) ON v.id = u.id
-             ORDER BY v.label"
-        ),
-        || dsl::values_in_from_joined(first, second),
+        expected,
+        compile(dsl::values_in_from_joined),
+        (first, second),
     );
 }
 
@@ -365,12 +386,10 @@ fn self_join_aliases() {
     let mut case = Case::new();
     seed_groups(&mut case);
 
-    case.assert_same(
-        "SELECT a.name, b.name FROM users a
+    let expected: Query<(), (Text, Text)> = sql("SELECT a.name, b.name FROM users a
          JOIN users b ON a.group_id = b.group_id AND a.id < b.id
-         ORDER BY a.name, b.name",
-        dsl::self_join_aliases,
-    );
+         ORDER BY a.name, b.name");
+    case.assert_same(expected, compile(dsl::self_join_aliases), ());
 }
 
 #[test]
@@ -378,11 +397,13 @@ fn lateral_columns_in_projection_expr() {
     let mut case = Case::new();
     seed_groups(&mut case);
 
-    case.assert_same(
-        "SELECT g.name, l.cnt + 1 FROM groups g
+    let expected: Query<(), (Text, Int8)> = sql("SELECT g.name, l.cnt + 1 FROM groups g
          CROSS JOIN LATERAL (SELECT count(*) AS cnt FROM users u WHERE u.group_id = g.id) l
-         ORDER BY g.name",
-        dsl::lateral_columns_in_projection_expr,
+         ORDER BY g.name");
+    case.assert_same(
+        expected,
+        compile(dsl::lateral_columns_in_projection_expr),
+        (),
     );
 }
 
@@ -396,10 +417,10 @@ fn subquery_columns_in_where() {
         rnd::text(),
     ));
 
-    case.assert_same(
+    let expected: Query<(), (Text, Int4)> = sql(
         "SELECT s.name, s.total FROM (SELECT name, price_cents * quantity AS total FROM products) s
          WHERE s.total > 10
          ORDER BY s.name",
-        dsl::subquery_columns_in_where,
     );
+    case.assert_same(expected, compile(dsl::subquery_columns_in_where), ());
 }

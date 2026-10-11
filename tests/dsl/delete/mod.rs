@@ -1,6 +1,8 @@
 mod dsl;
 
-use crate::support::{Case, rnd};
+use crate::support::{Case, compile, rnd, sql};
+use surus::Query;
+use surus::types::{Bool, Int8, Nullable, Text};
 
 #[test]
 fn by_name() {
@@ -12,10 +14,8 @@ fn by_name() {
         "INSERT INTO users (name) VALUES ('{doomed}'), ('{kept}')"
     ));
 
-    case.assert_same(
-        &format!("DELETE FROM users WHERE name = '{doomed}' RETURNING name"),
-        || dsl::by_name(&doomed),
-    );
+    let expected: Query<(Text,), (Text,)> = sql("DELETE FROM users WHERE name = $1 RETURNING name");
+    case.assert_same(expected, compile(dsl::by_name), (&doomed,));
 }
 
 #[test]
@@ -33,14 +33,10 @@ fn delete_using() {
         rnd::text(),
     ));
 
-    case.assert_same(
-        &format!(
-            "DELETE FROM users USING groups
-             WHERE groups.id = users.group_id AND groups.name = '{doomed_group}'
-             RETURNING users.name"
-        ),
-        || dsl::delete_using(&doomed_group),
-    );
+    let expected: Query<(Text,), (Text,)> = sql("DELETE FROM users USING groups
+         WHERE groups.id = users.group_id AND groups.name = $1
+         RETURNING users.name");
+    case.assert_same(expected, compile(dsl::delete_using), (&doomed_group,));
 }
 
 #[test]
@@ -57,14 +53,11 @@ fn returning_table_star() {
         rnd::text(),
     ));
 
-    case.assert_same_named(
-        &format!(
-            "DELETE FROM users USING groups
-             WHERE groups.id = users.group_id AND groups.name = '{group}'
-             RETURNING users.*, groups.name AS group_name"
-        ),
-        || dsl::returning_table_star(&group),
-    );
+    let expected: Query<(Text,), (Int8, Text, Nullable<Text>, Nullable<Int8>, Text)> =
+        sql("DELETE FROM users USING groups
+         WHERE groups.id = users.group_id AND groups.name = $1
+         RETURNING users.*, groups.name AS group_name");
+    case.assert_same_named(expected, compile(dsl::returning_table_star), (&group,));
 }
 
 #[test]
@@ -76,10 +69,9 @@ fn returning_old() {
         rnd::text()
     ));
 
-    case.assert_same(
-        &format!("DELETE FROM users WHERE name = '{name}' RETURNING old.name, old.email, new.name IS NULL"),
-        || dsl::returning_old(&name),
-    );
+    let expected: Query<(Text,), (Text, Nullable<Text>, Bool)> =
+        sql("DELETE FROM users WHERE name = $1 RETURNING old.name, old.email, new.name IS NULL");
+    case.assert_same(expected, compile(dsl::returning_old), (&name,));
 }
 
 #[test]
@@ -99,8 +91,8 @@ fn delete_using_subquery() {
         rnd::text(),
     ));
 
-    case.assert_same(
+    let expected: Query<(), (Text,)> = sql(
         "DELETE FROM users WHERE group_id IN (SELECT id FROM groups WHERE parent_id IS NULL) RETURNING name",
-        dsl::delete_using_subquery,
     );
+    case.assert_same(expected, compile(dsl::delete_using_subquery), ());
 }

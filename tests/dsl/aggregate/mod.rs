@@ -1,6 +1,8 @@
 mod dsl;
 
-use crate::support::{Case, rnd};
+use crate::support::{Case, compile, rnd, sql};
+use surus::Query;
+use surus::types::{Array, Bool, Float8, Int4, Int8, Nullable, Numeric, Text};
 
 #[test]
 fn count_per_group() {
@@ -19,10 +21,9 @@ fn count_per_group() {
         rnd::text(),
     ));
 
-    case.assert_same(
-        "SELECT group_id, count(*) FROM users GROUP BY group_id ORDER BY group_id",
-        dsl::count_per_group,
-    );
+    let expected: Query<(), (Nullable<Int8>, Int8)> =
+        sql("SELECT group_id, count(*) FROM users GROUP BY group_id ORDER BY group_id");
+    case.assert_same(expected, compile(dsl::count_per_group), ());
 }
 
 fn seed_mixed(case: &mut Case) {
@@ -49,10 +50,10 @@ fn having() {
     let mut case = Case::new();
     seed_mixed(&mut case);
 
-    case.assert_same(
+    let expected: Query<(), (Nullable<Int8>, Int8)> = sql(
         "SELECT group_id, count(*) FROM users GROUP BY group_id HAVING count(*) > 1 ORDER BY group_id",
-        dsl::having,
     );
+    case.assert_same(expected, compile(dsl::having), ());
 }
 
 #[test]
@@ -60,13 +61,12 @@ fn rollup() {
     let mut case = Case::new();
     seed_mixed(&mut case);
 
-    case.assert_same(
-        "SELECT group_id, email IS NULL, count(*)
+    let expected: Query<(), (Nullable<Int8>, Nullable<Bool>, Int8)> =
+        sql("SELECT group_id, email IS NULL, count(*)
          FROM users
          GROUP BY ROLLUP (group_id, (email IS NULL))
-         ORDER BY 1, 2",
-        dsl::rollup,
-    );
+         ORDER BY 1, 2");
+    case.assert_same(expected, compile(dsl::rollup), ());
 }
 
 #[test]
@@ -74,13 +74,12 @@ fn cube() {
     let mut case = Case::new();
     seed_mixed(&mut case);
 
-    case.assert_same(
-        "SELECT group_id, email IS NULL, count(*)
+    let expected: Query<(), (Nullable<Int8>, Nullable<Bool>, Int8)> =
+        sql("SELECT group_id, email IS NULL, count(*)
          FROM users
          GROUP BY CUBE (group_id, (email IS NULL))
-         ORDER BY 1, 2",
-        dsl::cube,
-    );
+         ORDER BY 1, 2");
+    case.assert_same(expected, compile(dsl::cube), ());
 }
 
 #[test]
@@ -88,13 +87,13 @@ fn grouping_sets() {
     let mut case = Case::new();
     seed_mixed(&mut case);
 
-    case.assert_same(
+    let expected: Query<(), (Nullable<Int8>, Nullable<Bool>, Int8, Int4)> = sql(
         "SELECT group_id, email IS NULL, count(*), GROUPING(group_id, (email IS NULL))
          FROM users
          GROUP BY GROUPING SETS ((group_id), ((email IS NULL)), ())
          ORDER BY 1, 2",
-        dsl::grouping_sets,
     );
+    case.assert_same(expected, compile(dsl::grouping_sets), ());
 }
 
 fn seed_products(case: &mut Case) {
@@ -119,11 +118,20 @@ fn common_aggregates() {
     let mut case = Case::new();
     seed_products(&mut case);
 
-    case.assert_same(
+    let expected: Query<
+        (),
+        (
+            Nullable<Int8>,
+            Nullable<Numeric>,
+            Nullable<Text>,
+            Nullable<Text>,
+            Nullable<Bool>,
+        ),
+    > = sql(
         "SELECT sum(price_cents), avg(price_cents), min(name), max(name), bool_or(quantity > 1)
          FROM products",
-        dsl::common_aggregates,
     );
+    case.assert_same(expected, compile(dsl::common_aggregates), ());
 }
 
 #[test]
@@ -131,11 +139,11 @@ fn filter_clause() {
     let mut case = Case::new();
     seed_products(&mut case);
 
-    case.assert_same(
+    let expected: Query<(), (Int8, Nullable<Int8>)> = sql(
         "SELECT count(*) FILTER (WHERE quantity > 1), sum(price_cents) FILTER (WHERE quantity = 1)
          FROM products",
-        dsl::filter_clause,
     );
+    case.assert_same(expected, compile(dsl::filter_clause), ());
 }
 
 #[test]
@@ -143,10 +151,10 @@ fn distinct_inside() {
     let mut case = Case::new();
     seed_products(&mut case);
 
-    case.assert_same(
+    let expected: Query<(), (Int8, Nullable<Array<Int4>>)> = sql(
         "SELECT count(DISTINCT quantity), array_agg(DISTINCT quantity ORDER BY quantity) FROM products",
-        dsl::distinct_inside,
     );
+    case.assert_same(expected, compile(dsl::distinct_inside), ());
 }
 
 #[test]
@@ -154,11 +162,11 @@ fn order_by_inside() {
     let mut case = Case::new();
     seed_products(&mut case);
 
-    case.assert_same(
+    let expected: Query<(), (Nullable<Text>, Nullable<Array<Int4>>)> = sql(
         "SELECT string_agg(name, ',' ORDER BY price_cents DESC), array_agg(price_cents ORDER BY price_cents)
          FROM products",
-        dsl::order_by_inside,
     );
+    case.assert_same(expected, compile(dsl::order_by_inside), ());
 }
 
 #[test]
@@ -166,13 +174,13 @@ fn ordered_set() {
     let mut case = Case::new();
     seed_products(&mut case);
 
-    case.assert_same(
+    let expected: Query<(), (Nullable<Float8>, Nullable<Int4>, Nullable<Int4>)> = sql(
         "SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY price_cents),
                 percentile_disc(0.5) WITHIN GROUP (ORDER BY price_cents),
                 mode() WITHIN GROUP (ORDER BY quantity)
          FROM products",
-        dsl::ordered_set,
     );
+    case.assert_same(expected, compile(dsl::ordered_set), ());
 }
 
 #[test]
@@ -180,12 +188,11 @@ fn hypothetical_set() {
     let mut case = Case::new();
     seed_products(&mut case);
 
-    case.assert_same(
-        "SELECT rank(500) WITHIN GROUP (ORDER BY price_cents),
+    let expected: Query<(), (Int8, Int8, Float8, Float8)> =
+        sql("SELECT rank(500) WITHIN GROUP (ORDER BY price_cents),
                 dense_rank(500) WITHIN GROUP (ORDER BY price_cents),
                 percent_rank(500) WITHIN GROUP (ORDER BY price_cents),
                 cume_dist(500) WITHIN GROUP (ORDER BY price_cents)
-         FROM products",
-        || dsl::hypothetical_set(500),
-    );
+         FROM products");
+    case.assert_same(expected, compile(|| dsl::hypothetical_set(500)), ());
 }

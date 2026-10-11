@@ -1,6 +1,8 @@
 mod dsl;
 
-use crate::support::{Case, literal, rnd};
+use crate::support::{Case, compile, literal, rnd, sql};
+use surus::Query;
+use surus::types::{Bool, Bytea, Int4, Json, Jsonb, Nullable, Text};
 
 fn seed_products(case: &mut Case) {
     case.exec(&format!(
@@ -26,10 +28,10 @@ fn jsonb_build_object() {
     let mut case = Case::new();
     seed_products(&mut case);
 
-    case.assert_same(
+    let expected: Query<(), (Jsonb,)> = sql(
         "SELECT jsonb_build_object('name', name, 'price', price_cents) FROM products ORDER BY name",
-        dsl::jsonb_build_object,
     );
+    case.assert_same(expected, compile(dsl::jsonb_build_object), ());
 }
 
 #[test]
@@ -37,10 +39,9 @@ fn jsonb_set() {
     let mut case = Case::new();
     seed_sample(&mut case);
 
-    case.assert_same(
-        "SELECT jsonb_set(v_jsonb, '{k}', '42'), v_jsonb - 's' FROM type_samples",
-        dsl::jsonb_set,
-    );
+    let expected: Query<(), (Nullable<Jsonb>, Nullable<Jsonb>)> =
+        sql("SELECT jsonb_set(v_jsonb, '{k}', '42'), v_jsonb - 's' FROM type_samples");
+    case.assert_same(expected, compile(dsl::jsonb_set), ());
 }
 
 #[test]
@@ -48,10 +49,10 @@ fn sql_json_constructors() {
     let mut case = Case::new();
     seed_products(&mut case);
 
-    case.assert_same(
+    let expected: Query<(), (Json, Json)> = sql(
         "SELECT JSON_OBJECT('name': name, 'qty': quantity), JSON_ARRAY(price_cents, quantity) FROM products ORDER BY name",
-        dsl::sql_json_constructors,
     );
+    case.assert_same(expected, compile(dsl::sql_json_constructors), ());
 }
 
 #[test]
@@ -59,12 +60,10 @@ fn json_table() {
     let mut case = Case::new();
     seed_sample(&mut case);
 
-    case.assert_same(
-        "SELECT jt.k, jt.s
+    let expected: Query<(), (Nullable<Int4>, Nullable<Text>)> = sql("SELECT jt.k, jt.s
          FROM type_samples,
-              JSON_TABLE(v_jsonb, '$' COLUMNS (k int4 PATH '$.k', s text PATH '$.s')) AS jt",
-        dsl::json_table,
-    );
+              JSON_TABLE(v_jsonb, '$' COLUMNS (k int4 PATH '$.k', s text PATH '$.s')) AS jt");
+    case.assert_same(expected, compile(dsl::json_table), ());
 }
 
 fn seed_sample_with_scalars(case: &mut Case) {
@@ -81,12 +80,20 @@ fn is_json_predicates() {
     let mut case = Case::new();
     seed_sample_with_scalars(&mut case);
 
-    case.assert_same(
-        "SELECT v_text IS JSON, v_jsonb IS JSON OBJECT, v_jsonb IS JSON ARRAY, v_jsonb IS JSON SCALAR,
+    let expected: Query<
+        (),
+        (
+            Nullable<Bool>,
+            Nullable<Bool>,
+            Nullable<Bool>,
+            Nullable<Bool>,
+            Nullable<Bool>,
+            Nullable<Bool>,
+        ),
+    > = sql("SELECT v_text IS JSON, v_jsonb IS JSON OBJECT, v_jsonb IS JSON ARRAY, v_jsonb IS JSON SCALAR,
                 v_jsonb::text IS JSON WITH UNIQUE KEYS, v_text IS NOT JSON
-         FROM type_samples",
-        dsl::is_json_predicates,
-    );
+         FROM type_samples");
+    case.assert_same(expected, compile(dsl::is_json_predicates), ());
 }
 
 #[test]
@@ -94,16 +101,24 @@ fn json_exists_query_value() {
     let mut case = Case::new();
     seed_sample(&mut case);
 
-    case.assert_same(
-        "SELECT JSON_EXISTS(v_jsonb, '$.k'),
+    let expected: Query<
+        (),
+        (
+            Nullable<Bool>,
+            Nullable<Jsonb>,
+            Nullable<Int4>,
+            Nullable<Text>,
+            Nullable<Text>,
+            Nullable<Jsonb>,
+        ),
+    > = sql("SELECT JSON_EXISTS(v_jsonb, '$.k'),
                 JSON_QUERY(v_jsonb, '$.s' WITH WRAPPER),
                 JSON_VALUE(v_jsonb, '$.k' RETURNING int4),
                 JSON_VALUE(v_jsonb, '$.missing' DEFAULT -1 ON EMPTY),
                 JSON_VALUE(v_jsonb, '$.k.x' DEFAULT 'err' ON ERROR),
                 JSON_QUERY(v_jsonb, '$.nope' EMPTY ARRAY ON EMPTY)
-         FROM type_samples",
-        dsl::json_exists_query_value,
-    );
+         FROM type_samples");
+    case.assert_same(expected, compile(dsl::json_exists_query_value), ());
 }
 
 #[test]
@@ -111,12 +126,21 @@ fn json_serialize_and_constructors() {
     let mut case = Case::new();
     seed_sample_with_scalars(&mut case);
 
-    case.assert_same(
+    let expected: Query<
+        (),
+        (
+            Nullable<Text>,
+            Nullable<Bytea>,
+            Nullable<Json>,
+            Nullable<Json>,
+            Nullable<Json>,
+        ),
+    > = sql(
         "SELECT JSON_SERIALIZE(v_jsonb), JSON_SERIALIZE(v_jsonb RETURNING bytea),
                 JSON_SCALAR(v_int4), JSON_SCALAR(v_text), JSON(v_jsonb::text)
          FROM type_samples",
-        dsl::json_serialize_and_constructors,
     );
+    case.assert_same(expected, compile(dsl::json_serialize_and_constructors), ());
 }
 
 #[test]
@@ -124,11 +148,9 @@ fn jsonb_aggregates() {
     let mut case = Case::new();
     seed_products(&mut case);
 
-    case.assert_same(
-        "SELECT jsonb_agg(name ORDER BY name), jsonb_object_agg(name, price_cents), json_agg(quantity ORDER BY name)
-         FROM products",
-        dsl::jsonb_aggregates,
-    );
+    let expected: Query<(), (Nullable<Jsonb>, Nullable<Jsonb>, Nullable<Json>)> = sql("SELECT jsonb_agg(name ORDER BY name), jsonb_object_agg(name, price_cents), json_agg(quantity ORDER BY name)
+         FROM products");
+    case.assert_same(expected, compile(dsl::jsonb_aggregates), ());
 }
 
 #[test]
@@ -136,10 +158,8 @@ fn jsonb_path_functions() {
     let mut case = Case::new();
     seed_sample(&mut case);
 
-    case.assert_same(
-        "SELECT p, jsonb_path_query_array(v_jsonb, '$.*'), jsonb_path_exists(v_jsonb, '$.k ? (@ > $min)', '{\"min\": 0}')
+    let expected: Query<(), (Nullable<Jsonb>, Nullable<Jsonb>, Nullable<Bool>)> = sql("SELECT p, jsonb_path_query_array(v_jsonb, '$.*'), jsonb_path_exists(v_jsonb, '$.k ? (@ > $min)', '{\"min\": 0}')
          FROM type_samples, jsonb_path_query(v_jsonb, '$.*') AS p
-         ORDER BY p::text",
-        dsl::jsonb_path_functions,
-    );
+         ORDER BY p::text");
+    case.assert_same(expected, compile(dsl::jsonb_path_functions), ());
 }

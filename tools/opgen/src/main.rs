@@ -1,4 +1,5 @@
 use postgres::error::SqlState;
+use postgres::types::{Kind as TypeKind, Type};
 use postgres::{Client, NoTls};
 use std::collections::BTreeMap;
 use std::fs;
@@ -191,11 +192,10 @@ const NAMES: [(&str, &str); 74] = [
     ("~~*", "ilike"),
 ];
 
-const PLACEHOLDER: &str = "    Query::plain(\"SELECT NULL WHERE false\")\n";
-
 struct Signature {
     left: Option<&'static Concrete>,
     right: &'static Concrete,
+    result: String,
 }
 
 impl Signature {
@@ -261,7 +261,11 @@ fn resolve(left: Option<&str>, right: &str) -> Vec<Signature> {
     let Some(left) = left else {
         return rights
             .into_iter()
-            .map(|right| Signature { left: None, right })
+            .map(|right| Signature {
+                left: None,
+                right,
+                result: String::new(),
+            })
             .collect();
     };
     let mut out = Vec::new();
@@ -271,6 +275,7 @@ fn resolve(left: Option<&str>, right: &str) -> Vec<Signature> {
                 out.push(Signature {
                     left: Some(l),
                     right: r,
+                    result: String::new(),
                 });
             }
         }
@@ -280,7 +285,19 @@ fn resolve(left: Option<&str>, right: &str) -> Vec<Signature> {
 
 const UNRESOLVED: [SqlState; 2] = [SqlState::AMBIGUOUS_FUNCTION, SqlState::UNDEFINED_FUNCTION];
 
-fn accepted(client: &mut Client, symbol: &str, s: &Signature) -> bool {
+fn marker(ty: &Type) -> String {
+    match ty.kind() {
+        TypeKind::Array(inner) => format!("t::Array<{}>", marker(inner)),
+        TypeKind::Range(inner) => format!("t::Range<{}>", marker(inner)),
+        TypeKind::Multirange(inner) => format!("t::Multirange<{}>", marker(inner)),
+        TypeKind::Enum(_) | TypeKind::Composite(_) | TypeKind::Domain(_) => {
+            format!("s::{}", type_ident(ty.name()))
+        }
+        _ => format!("t::{}", type_ident(ty.name())),
+    }
+}
+
+fn accepted(client: &mut Client, symbol: &str, s: &Signature) -> Option<String> {
     let sql = match s.left {
         Some(l) => format!(
             "SELECT v_{} {symbol} v_{} FROM type_samples",
@@ -289,11 +306,14 @@ fn accepted(client: &mut Client, symbol: &str, s: &Signature) -> bool {
         None => format!("SELECT {symbol} v_{} FROM type_samples", s.right.ident),
     };
     client.batch_execute("SAVEPOINT probe").unwrap();
-    let result = client.simple_query(&sql);
+    let result = client.prepare(&sql).and_then(|statement| {
+        let result = format!("t::Nullable<{}>", marker(statement.columns()[0].type_()));
+        client.query(&statement, &[]).map(|_| result)
+    });
     client.batch_execute("ROLLBACK TO SAVEPOINT probe").unwrap();
     match result {
-        Ok(_) => true,
-        Err(e) if e.code().is_some_and(|c| UNRESOLVED.contains(c)) => false,
+        Ok(result) => Some(result),
+        Err(e) if e.code().is_some_and(|c| UNRESOLVED.contains(c)) => None,
         Err(e) => panic!("probe failed: {e}\n{sql}"),
     }
 }
@@ -314,8 +334,38 @@ fn main() {
             &[],
         )
         .unwrap();
+    let scalars: Vec<(String, String)> = client
+        .query(
+            "SELECT typname, quote_ident(typname)
+             FROM pg_type
+             WHERE typnamespace = 'pg_catalog'::regnamespace
+               AND typtype = 'b'
+               AND typcategory <> 'A'
+             ORDER BY typname",
+            &[],
+        )
+        .unwrap()
+        .iter()
+        .map(|row| (row.get(0), row.get(1)))
+        .collect();
+    let ranges: Vec<(String, String, String)> = client
+        .query(
+            "SELECT s.typname, quote_ident(r.typname), quote_ident(m.typname)
+             FROM pg_range g
+             JOIN pg_type r ON r.oid = g.rngtypid
+             JOIN pg_type m ON m.oid = g.rngmultitypid
+             JOIN pg_type s ON s.oid = g.rngsubtype
+             WHERE r.typnamespace = 'pg_catalog'::regnamespace
+             ORDER BY s.typname",
+            &[],
+        )
+        .unwrap()
+        .iter()
+        .map(|row| (row.get(0), row.get(1), row.get(2)))
+        .collect();
 
-    let tests = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/dsl");
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let tests = root.join("tests/dsl");
     client.batch_execute("BEGIN").unwrap();
     for fixture in ["custom_types.sql", "type_samples.sql"] {
         let sql = fs::read_to_string(tests.join("schema").join(fixture)).unwrap();
@@ -331,7 +381,10 @@ fn main() {
         let right: String = row.get(2);
         let signatures: Vec<Signature> = resolve(left.as_deref(), &right)
             .into_iter()
-            .filter(|s| accepted(&mut client, &symbol, s))
+            .filter_map(|mut s| {
+                s.result = accepted(&mut client, &symbol, &s)?;
+                Some(s)
+            })
             .collect();
         if signatures.is_empty() {
             continue;
@@ -352,43 +405,122 @@ fn main() {
         signatures.dedup_by_key(|s| s.ident());
     }
 
-    let root = tests.join("operators");
-    write_catalog(&root.join("catalog"), &version, &by_operator);
-    write_dsl(&root.join("dsl"), &by_operator);
-    println!(
-        "{} operators, {} signatures, PostgreSQL {version}",
-        by_operator.len(),
-        total
+    let operators = tests.join("operators");
+    write_catalog(&operators.join("catalog"), &version, &by_operator);
+    write_dsl(&operators.join("dsl"), &by_operator);
+    write_types(
+        &root.join("src/types/catalog.rs"),
+        &version,
+        &scalars,
+        &ranges,
     );
+    println!(
+        "{} operators, {} signatures, {} types, PostgreSQL {version}",
+        by_operator.len(),
+        total,
+        scalars.len()
+    );
+}
+
+fn header(version: &str) -> String {
+    format!("// Generated by `cargo run -p opgen` from PostgreSQL {version}. Do not edit.\n")
+}
+
+const PRELUDE: [&str; 1] = ["Box"];
+
+fn type_ident(typname: &str) -> String {
+    let ident: String = typname
+        .split('_')
+        .map(|word| {
+            let mut chars = word.chars();
+            chars
+                .next()
+                .map(|first| first.to_ascii_uppercase().to_string() + chars.as_str())
+                .unwrap_or_default()
+        })
+        .collect();
+    if PRELUDE.contains(&ident.as_str()) {
+        format!("Pg{ident}")
+    } else {
+        ident
+    }
+}
+
+fn write_types(
+    file: &Path,
+    version: &str,
+    scalars: &[(String, String)],
+    ranges: &[(String, String, String)],
+) {
+    let mut out = format!(
+        "{}\nuse super::{{Element, PgType, RangeSubtype}};\n",
+        header(version)
+    );
+    for (typname, sql) in scalars {
+        out.push_str(&format!(
+            "\npub struct {0};\n\nimpl PgType for {0} {{\n    fn name() -> String {{\n        {sql:?}.to_string()\n    }}\n}}\n\nimpl Element for {0} {{}}\n",
+            type_ident(typname)
+        ));
+    }
+    for (subtype, range, multirange) in ranges {
+        out.push_str(&format!(
+            "\nimpl RangeSubtype for {} {{\n    const RANGE: &'static str = {range:?};\n    const MULTIRANGE: &'static str = {multirange:?};\n}}\n",
+            type_ident(subtype)
+        ));
+    }
+    fs::create_dir_all(file.parent().unwrap()).unwrap();
+    fs::write(file, out).unwrap();
 }
 
 fn write_catalog(dir: &Path, version: &str, ops: &BTreeMap<&str, (String, Vec<Signature>)>) {
     let _ = fs::remove_dir_all(dir);
     fs::create_dir_all(dir).unwrap();
-    let header =
-        format!("// Generated by `cargo run -p opgen` from PostgreSQL {version}. Do not edit.\n");
+    let header = header(version);
     let mods: String = ops.keys().map(|name| format!("mod {name};\n")).collect();
     fs::write(dir.join("mod.rs"), format!("{header}\n{mods}")).unwrap();
     for (name, (symbol, signatures)) in ops {
-        let pairs: String = signatures
-            .iter()
-            .map(|s| {
-                let left = match s.left {
-                    Some(left) => format!("Some(\"v_{}\")", left.ident),
-                    None => "None".to_string(),
-                };
-                format!(
-                    "            Pair {{\n                left: {left},\n                right: \"v_{}\",\n                dsl: dsl::{},\n            }},\n",
-                    s.right.ident,
-                    s.ident()
-                )
-            })
-            .collect();
+        let pairs: String = signatures.iter().map(pair).collect();
         let body = format!(
-            "{header}\nuse super::super::dsl::{name} as dsl;\nuse super::super::{{Pair, run}};\n\n#[test]\nfn all() {{\n    run(\n        \"{symbol}\",\n        &[\n{pairs}        ],\n    );\n}}\n"
+            "{header}\nuse super::super::Run;\nuse super::super::dsl::{name} as dsl;\n{}\n#[test]\nfn all() {{\n    let mut run = Run::new(\"{symbol}\");\n{pairs}    run.finish();\n}}\n",
+            aliases(signatures)
         );
         fs::write(dir.join(format!("{name}.rs")), body).unwrap();
     }
+}
+
+fn aliases(signatures: &[Signature]) -> String {
+    let schema = signatures.iter().any(|s| s.result.contains("s::"));
+    format!(
+        "{}use surus::types as t;\n",
+        if schema {
+            "use crate::schema as s;\n"
+        } else {
+            ""
+        }
+    )
+}
+
+fn pair(s: &Signature) -> String {
+    let left = match s.left {
+        Some(left) => format!("Some(\"v_{}\")", left.ident),
+        None => "None".to_string(),
+    };
+    let args = [
+        left,
+        format!("\"v_{}\"", s.right.ident),
+        format!("dsl::{}", s.ident()),
+    ];
+    let line = format!("    run.pair::<({},)>({});\n", s.result, args.join(", "));
+    if line.len() <= 101 {
+        return line;
+    }
+    format!(
+        "    run.pair::<({},)>(\n{}    );\n",
+        s.result,
+        args.iter()
+            .map(|a| format!("        {a},\n"))
+            .collect::<String>()
+    )
 }
 
 fn write_dsl(dir: &Path, ops: &BTreeMap<&str, (String, Vec<Signature>)>) {
@@ -401,12 +533,18 @@ fn write_dsl(dir: &Path, ops: &BTreeMap<&str, (String, Vec<Signature>)>) {
             mods.push_str(&line);
         }
         let file: PathBuf = dir.join(format!("{name}.rs"));
-        let mut source = fs::read_to_string(&file)
-            .unwrap_or_else(|_| "use crate::support::Query;\n".to_string());
-        for ident in signatures.iter().map(Signature::ident) {
+        let mut source = fs::read_to_string(&file).unwrap_or_else(|_| {
+            format!(
+                "use crate::support::placeholder;\nuse surus::Query;\n{}",
+                aliases(signatures)
+            )
+        });
+        for s in signatures {
+            let ident = s.ident();
             if !source.contains(&format!("pub fn {ident}(")) {
                 source.push_str(&format!(
-                    "\npub fn {ident}() -> Query {{\n{PLACEHOLDER}}}\n"
+                    "\npub fn {ident}() -> Query<(), ({},)> {{\n    placeholder()\n}}\n",
+                    s.result
                 ));
             }
         }

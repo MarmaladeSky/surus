@@ -1,7 +1,8 @@
 mod dsl;
 
-use crate::support::{Case, rnd};
-use postgres::types::Type;
+use crate::support::{Case, compile, rnd, sql};
+use surus::Query;
+use surus::types::{Bool, Int4, Int8, Nullable, Text};
 
 #[test]
 fn user_returning() {
@@ -9,12 +10,9 @@ fn user_returning() {
     let name = rnd::text();
     let email = rnd::text();
 
-    case.assert_same(
-        &format!(
-            "INSERT INTO users (name, email) VALUES ('{name}', '{email}') RETURNING name, email"
-        ),
-        || dsl::user_returning(&name, &email),
-    );
+    let expected: Query<(Text, Text), (Text, Nullable<Text>)> =
+        sql("INSERT INTO users (name, email) VALUES ($1, $2) RETURNING name, email");
+    case.assert_same(expected, compile(dsl::user_returning), (&name, &email));
 }
 
 #[test]
@@ -24,13 +22,14 @@ fn product_skips_generated_columns() {
     let price_cents = rnd::int();
     let quantity = rnd::int();
 
+    let expected: Query<(Text, Int4, Int4), (Text, Int4, Int4, Nullable<Int8>)> =
+        sql("INSERT INTO products (name, price_cents, quantity)
+         VALUES ($1, $2, $3)
+         RETURNING name, price_cents, quantity, total_cents");
     case.assert_same(
-        &format!(
-            "INSERT INTO products (name, price_cents, quantity)
-             VALUES ('{name}', {price_cents}, {quantity})
-             RETURNING name, price_cents, quantity, total_cents"
-        ),
-        || dsl::product(&name, price_cents, quantity),
+        expected,
+        compile(dsl::product),
+        (&name, price_cents, quantity),
     );
 }
 
@@ -44,13 +43,13 @@ fn insert_select() {
         rnd::text()
     ));
 
+    let expected: Query<(Text,), (Text,)> = sql("INSERT INTO groups (name)
+         SELECT name FROM users WHERE name LIKE $1 ORDER BY name
+         RETURNING name");
     case.assert_same(
-        &format!(
-            "INSERT INTO groups (name)
-             SELECT name FROM users WHERE name LIKE '{prefix}%' ORDER BY name
-             RETURNING name"
-        ),
-        || dsl::insert_select(&format!("{prefix}%")),
+        expected,
+        compile(dsl::insert_select),
+        (format!("{prefix}%"),),
     );
 }
 
@@ -61,12 +60,13 @@ fn multi_row_values() {
     let second = rnd::text();
     let email = rnd::text();
 
+    let expected: Query<(Text, Text, Text), (Text, Nullable<Text>)> =
+        sql("INSERT INTO users (name, email) VALUES ($1, $2), ($3, NULL)
+         RETURNING name, email");
     case.assert_same(
-        &format!(
-            "INSERT INTO users (name, email) VALUES ('{first}', '{email}'), ('{second}', NULL)
-             RETURNING name, email"
-        ),
-        || dsl::multi_row_values(&first, &email, &second),
+        expected,
+        compile(dsl::multi_row_values),
+        (&first, &email, &second),
     );
 }
 
@@ -76,13 +76,11 @@ fn default_value() {
     let name = rnd::text();
     let price_cents = rnd::int();
 
-    case.assert_same(
-        &format!(
-            "INSERT INTO products (name, price_cents, quantity) VALUES ('{name}', {price_cents}, DEFAULT)
-             RETURNING name, price_cents, quantity"
-        ),
-        || dsl::default_value(&name, price_cents),
+    let expected: Query<(Text, Int4), (Text, Int4, Int4)> = sql(
+        "INSERT INTO products (name, price_cents, quantity) VALUES ($1, $2, DEFAULT)
+         RETURNING name, price_cents, quantity",
     );
+    case.assert_same(expected, compile(dsl::default_value), (&name, price_cents));
 }
 
 #[test]
@@ -91,14 +89,12 @@ fn overriding_system_value() {
     let id = 1_000_000_000_000 + rnd::u64() as i64 % 1_000_000_000;
     let name = rnd::text();
 
-    case.assert_same(
-        &format!(
-            "INSERT INTO products (id, name, price_cents) OVERRIDING SYSTEM VALUE
-             VALUES ({id}, '{name}', 1)
-             RETURNING id, name"
-        ),
-        || dsl::overriding_system_value(id, &name),
+    let expected: Query<(Int8, Text), (Int8, Text)> = sql(
+        "INSERT INTO products (id, name, price_cents) OVERRIDING SYSTEM VALUE
+         VALUES ($1, $2, 1)
+         RETURNING id, name",
     );
+    case.assert_same(expected, compile(dsl::overriding_system_value), (id, &name));
 }
 
 #[test]
@@ -114,14 +110,15 @@ fn on_conflict_do_nothing() {
         rnd::text()
     ));
 
+    let expected: Query<(Text, Text), (Int8, Text)> =
+        sql("INSERT INTO user_settings (user_id, theme)
+         SELECT id, 'light' FROM users WHERE name IN ($1, $2)
+         ON CONFLICT (user_id) DO NOTHING
+         RETURNING user_id, theme");
     case.assert_same(
-        &format!(
-            "INSERT INTO user_settings (user_id, theme)
-             SELECT id, 'light' FROM users WHERE name IN ('{taken}', '{free}')
-             ON CONFLICT (user_id) DO NOTHING
-             RETURNING user_id, theme"
-        ),
-        || dsl::on_conflict_do_nothing(&taken, &free),
+        expected,
+        compile(dsl::on_conflict_do_nothing),
+        (&taken, &free),
     );
 }
 
@@ -135,15 +132,15 @@ fn on_conflict_do_update() {
          INSERT INTO user_settings (user_id, theme) SELECT id, 'light' FROM users WHERE name = '{name}';"
     ));
 
+    let expected: Query<(Text,), (Int8, Text)> = sql("INSERT INTO user_settings (user_id, theme)
+         SELECT id, 'dark' FROM users WHERE name = $1
+         ON CONFLICT (user_id) DO UPDATE SET theme = EXCLUDED.theme || '!'
+             WHERE user_settings.theme <> EXCLUDED.theme
+         RETURNING user_id, theme");
     case.assert_same(
-        &format!(
-            "INSERT INTO user_settings (user_id, theme)
-             SELECT id, 'dark' FROM users WHERE name = '{name}'
-             ON CONFLICT (user_id) DO UPDATE SET theme = EXCLUDED.theme || '!'
-                 WHERE user_settings.theme <> EXCLUDED.theme
-             RETURNING user_id, theme"
-        ),
-        || dsl::on_conflict_do_update(&name, "dark"),
+        expected,
+        compile(|| dsl::on_conflict_do_update("dark")),
+        (&name,),
     );
 }
 
@@ -151,10 +148,9 @@ fn on_conflict_do_update() {
 fn default_values() {
     let mut case = Case::new();
 
-    case.assert_same(
-        "INSERT INTO type_samples DEFAULT VALUES RETURNING v_int4 IS NULL, v_text IS NULL",
-        dsl::default_values,
-    );
+    let expected: Query<(), (Bool, Bool)> =
+        sql("INSERT INTO type_samples DEFAULT VALUES RETURNING v_int4 IS NULL, v_text IS NULL");
+    case.assert_same(expected, compile(dsl::default_values), ());
 }
 
 #[test]
@@ -163,12 +159,13 @@ fn virtual_generated_column() {
     let name = rnd::text();
     let price_cents = rnd::int();
 
+    let expected: Query<(Text, Int4), (Int4, Nullable<Int8>, Nullable<Int8>)> =
+        sql("INSERT INTO products (name, price_cents) VALUES ($1, $2)
+         RETURNING price_cents, price_with_tax, total_cents");
     case.assert_same(
-        &format!(
-            "INSERT INTO products (name, price_cents) VALUES ('{name}', {price_cents})
-             RETURNING price_cents, price_with_tax, total_cents"
-        ),
-        || dsl::virtual_generated_column(&name, price_cents),
+        expected,
+        compile(dsl::virtual_generated_column),
+        (&name, price_cents),
     );
 }
 
@@ -184,13 +181,14 @@ fn on_conflict_partial_index() {
         rnd::text(),
     ));
 
+    let expected: Query<(Text, Text), (Text, Nullable<Text>)> =
+        sql("INSERT INTO users (name, email) VALUES ($1, $2)
+         ON CONFLICT (email) WHERE email IS NOT NULL DO UPDATE SET name = EXCLUDED.name
+         RETURNING name, email");
     case.assert_same(
-        &format!(
-            "INSERT INTO users (name, email) VALUES ('{renamed}', '{email}')
-             ON CONFLICT (email) WHERE email IS NOT NULL DO UPDATE SET name = EXCLUDED.name
-             RETURNING name, email"
-        ),
-        || dsl::on_conflict_partial_index(&renamed, &email),
+        expected,
+        compile(dsl::on_conflict_partial_index),
+        (&renamed, &email),
     );
 }
 
@@ -201,13 +199,14 @@ fn returning_expression() {
     let price_cents = rnd::int();
     let quantity = rnd::int();
 
+    let expected: Query<(Text, Int4, Int4), (Int4,)> =
+        sql("INSERT INTO products (name, price_cents, quantity)
+         VALUES ($1, $2, $3)
+         RETURNING price_cents * quantity AS total");
     case.assert_same_named(
-        &format!(
-            "INSERT INTO products (name, price_cents, quantity)
-             VALUES ('{name}', {price_cents}, {quantity})
-             RETURNING price_cents * quantity AS total"
-        ),
-        || dsl::returning_expression(&name, price_cents, quantity),
+        expected,
+        compile(dsl::returning_expression),
+        (&name, price_cents, quantity),
     );
 }
 
@@ -220,23 +219,17 @@ fn insert_select_expression() {
         rnd::text(),
     ));
 
-    case.assert_same(
-        "INSERT INTO groups (name) SELECT name || '-copy' FROM groups RETURNING name",
-        dsl::insert_select_expression,
-    );
+    let expected: Query<(), (Text,)> =
+        sql("INSERT INTO groups (name) SELECT name || '-copy' FROM groups RETURNING name");
+    case.assert_same(expected, compile(dsl::insert_select_expression), ());
 }
 
 #[test]
 fn insert_bound() {
     let mut case = Case::new();
     let name = rnd::text();
-    let email = rnd::text();
 
-    case.assert_same(
-        &format!("INSERT INTO users (name, email) VALUES ('{name}', NULL) RETURNING name, email"),
-        || dsl::insert_bound(&name, None),
-    );
-    case.assert_param_types(&[Type::TEXT, Type::TEXT], || {
-        dsl::insert_bound(&name, Some(&email))
-    });
+    let expected: Query<(Text, Nullable<Text>), (Text, Nullable<Text>)> =
+        sql("INSERT INTO users (name, email) VALUES ($1, $2) RETURNING name, email");
+    case.assert_same(expected, compile(dsl::insert_bound), (&name, None::<&str>));
 }

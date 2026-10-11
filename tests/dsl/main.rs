@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 mod aggregate;
 mod arrays;
 mod casts;
@@ -23,6 +25,7 @@ mod predicates;
 mod ranges;
 mod rejects;
 mod rows;
+mod schema;
 mod select;
 mod set_ops;
 mod subquery;

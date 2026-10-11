@@ -1,53 +1,55 @@
-use crate::support::Query;
+use crate::support::placeholder;
+use surus::Query;
+use surus::types::{Int8, Nullable, Text};
 
-pub fn scalar_group_name() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn scalar_group_name() -> Query<(), (Text, Nullable<Text>)> {
+    placeholder()
 }
 
-pub fn scalar_multiple_rows_fails() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn scalar_multiple_rows_fails() -> Query<(), (Text, Nullable<Text>)> {
+    placeholder()
 }
 
-pub fn exists_groups_with_users() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn exists_groups_with_users() -> Query<(), (Text,)> {
+    placeholder()
 }
 
-pub fn not_exists_empty_groups() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn not_exists_empty_groups() -> Query<(), (Text,)> {
+    placeholder()
 }
 
-pub fn in_subquery(_group: &str) -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn in_subquery() -> Query<(Text,), (Text,)> {
+    placeholder()
 }
 
-pub fn any_not_the_cheapest() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn any_not_the_cheapest() -> Query<(), (Text,)> {
+    placeholder()
 }
 
-pub fn all_the_most_expensive() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn all_the_most_expensive() -> Query<(), (Text,)> {
+    placeholder()
 }
 
-pub fn not_in_subquery(_group: &str) -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn not_in_subquery() -> Query<(Text,), (Text,)> {
+    placeholder()
 }
 
-pub fn not_in_with_null_returns_nothing() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn not_in_with_null_returns_nothing() -> Query<(), (Text, Int8)> {
+    placeholder()
 }
 
-pub fn row_valued_in(_group: &str) -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn row_valued_in() -> Query<(Text,), (Text,)> {
+    placeholder()
 }
 
-pub fn correlated_scalar_in_arithmetic() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn correlated_scalar_in_arithmetic() -> Query<(), (Text, Nullable<Int8>)> {
+    placeholder()
 }
 
-pub fn exists_and_predicate() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn exists_and_predicate() -> Query<(), (Text,)> {
+    placeholder()
 }
 
-pub fn scalar_subquery_compared() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn scalar_subquery_compared() -> Query<(), (Text,)> {
+    placeholder()
 }

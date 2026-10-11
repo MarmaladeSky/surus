@@ -1,6 +1,8 @@
 mod dsl;
 
-use crate::support::{Case, rnd};
+use crate::support::{Case, compile, rnd, sql};
+use surus::Query;
+use surus::types::{Float8, Int4, Int8, Nullable, Numeric, Text};
 
 #[test]
 fn row_number_by_name() {
@@ -13,10 +15,9 @@ fn row_number_by_name() {
         rnd::text(),
     ));
 
-    case.assert_same(
-        "SELECT name, row_number() OVER (ORDER BY name) FROM users ORDER BY name",
-        dsl::row_number_by_name,
-    );
+    let expected: Query<(), (Text, Int8)> =
+        sql("SELECT name, row_number() OVER (ORDER BY name) FROM users ORDER BY name");
+    case.assert_same(expected, compile(dsl::row_number_by_name), ());
 }
 
 fn seed_products(case: &mut Case) {
@@ -41,15 +42,14 @@ fn partition_by() {
     let mut case = Case::new();
     seed_products(&mut case);
 
-    case.assert_same(
-        "SELECT name, quantity,
+    let expected: Query<(), (Text, Int4, Int8, Nullable<Int8>, Int8)> =
+        sql("SELECT name, quantity,
                 rank() OVER (PARTITION BY quantity ORDER BY price_cents, name),
                 sum(price_cents) OVER (PARTITION BY quantity),
                 count(*) FILTER (WHERE price_cents > 500) OVER (PARTITION BY quantity)
          FROM products
-         ORDER BY name",
-        dsl::partition_by,
-    );
+         ORDER BY name");
+    case.assert_same(expected, compile(dsl::partition_by), ());
 }
 
 #[test]
@@ -57,14 +57,12 @@ fn lag_lead() {
     let mut case = Case::new();
     seed_products(&mut case);
 
-    case.assert_same(
-        "SELECT name,
+    let expected: Query<(), (Text, Nullable<Int4>, Nullable<Int4>)> = sql("SELECT name,
                 lag(price_cents) OVER (ORDER BY price_cents, name),
                 lead(price_cents, 1, 0) OVER (ORDER BY price_cents, name)
          FROM products
-         ORDER BY price_cents, name",
-        dsl::lag_lead,
-    );
+         ORDER BY price_cents, name");
+    case.assert_same(expected, compile(dsl::lag_lead), ());
 }
 
 #[test]
@@ -72,15 +70,15 @@ fn frame_clauses() {
     let mut case = Case::new();
     seed_products(&mut case);
 
-    case.assert_same(
+    let expected: Query<(), (Text, Nullable<Int8>, Nullable<Numeric>, Int8)> = sql(
         "SELECT name,
                 sum(price_cents) OVER (ORDER BY price_cents, name ROWS BETWEEN 1 PRECEDING AND CURRENT ROW),
                 avg(price_cents) OVER (ORDER BY price_cents, name RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW),
                 count(*) OVER (ORDER BY quantity GROUPS BETWEEN CURRENT ROW AND 1 FOLLOWING)
          FROM products
          ORDER BY price_cents, name",
-        dsl::frame_clauses,
     );
+    case.assert_same(expected, compile(dsl::frame_clauses), ());
 }
 
 #[test]
@@ -88,13 +86,13 @@ fn named_window() {
     let mut case = Case::new();
     seed_products(&mut case);
 
-    case.assert_same(
+    let expected: Query<(), (Text, Int8, Int8, Int4)> = sql(
         "SELECT name, rank() OVER w, dense_rank() OVER w, ntile(2) OVER w
          FROM products
          WINDOW w AS (PARTITION BY quantity ORDER BY price_cents, name)
          ORDER BY name",
-        dsl::named_window,
     );
+    case.assert_same(expected, compile(dsl::named_window), ());
 }
 
 #[test]
@@ -102,8 +100,17 @@ fn value_functions() {
     let mut case = Case::new();
     seed_products(&mut case);
 
-    case.assert_same(
-        "SELECT name,
+    let expected: Query<
+        (),
+        (
+            Text,
+            Nullable<Text>,
+            Nullable<Text>,
+            Nullable<Text>,
+            Float8,
+            Float8,
+        ),
+    > = sql("SELECT name,
                 first_value(name) OVER w,
                 last_value(name) OVER (w ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING),
                 nth_value(name, 2) OVER w,
@@ -111,9 +118,8 @@ fn value_functions() {
                 cume_dist() OVER w
          FROM products
          WINDOW w AS (ORDER BY price_cents, name)
-         ORDER BY price_cents, name",
-        dsl::value_functions,
-    );
+         ORDER BY price_cents, name");
+    case.assert_same(expected, compile(dsl::value_functions), ());
 }
 
 #[test]
@@ -121,7 +127,7 @@ fn frame_exclusion_and_offsets() {
     let mut case = Case::new();
     seed_products(&mut case);
 
-    case.assert_same(
+    let expected: Query<(), (Text, Nullable<Int8>, Nullable<Int8>, Int8, Int8)> = sql(
         "SELECT name,
                 sum(price_cents) OVER (ORDER BY price_cents, name ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING EXCLUDE CURRENT ROW),
                 sum(price_cents) OVER (ORDER BY price_cents RANGE BETWEEN 100 PRECEDING AND 100 FOLLOWING),
@@ -129,6 +135,6 @@ fn frame_exclusion_and_offsets() {
                 count(*) OVER (ORDER BY quantity ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING EXCLUDE GROUP)
          FROM products
          ORDER BY price_cents, name",
-        dsl::frame_exclusion_and_offsets,
     );
+    case.assert_same(expected, compile(dsl::frame_exclusion_and_offsets), ());
 }

@@ -1,6 +1,8 @@
 mod dsl;
 
-use crate::support::{Case, rnd};
+use crate::support::{Case, compile, rnd, sql};
+use surus::Query;
+use surus::types::{Bool, Int4, Int8, Nullable, Text};
 
 #[test]
 fn single_row() {
@@ -9,10 +11,9 @@ fn single_row() {
 
     case.exec(&format!("INSERT INTO users (name) VALUES ('{name}')"));
 
-    case.assert_same(
-        "SELECT id, name, email, group_id FROM users",
-        dsl::single_row,
-    );
+    let expected: Query<(), (Int8, Text, Nullable<Text>, Nullable<Int8>)> =
+        sql("SELECT id, name, email, group_id FROM users");
+    case.assert_same(expected, compile(dsl::single_row), ());
 }
 
 fn seed_two_groups(case: &mut Case) {
@@ -39,10 +40,9 @@ fn distinct_group_ids() {
     let mut case = Case::new();
     seed_two_groups(&mut case);
 
-    case.assert_same(
-        "SELECT DISTINCT group_id FROM users ORDER BY group_id",
-        dsl::distinct_group_ids,
-    );
+    let expected: Query<(), (Nullable<Int8>,)> =
+        sql("SELECT DISTINCT group_id FROM users ORDER BY group_id");
+    case.assert_same(expected, compile(dsl::distinct_group_ids), ());
 }
 
 #[test]
@@ -50,10 +50,9 @@ fn distinct_on_first_user_per_group() {
     let mut case = Case::new();
     seed_two_groups(&mut case);
 
-    case.assert_same(
-        "SELECT DISTINCT ON (group_id) group_id, name FROM users ORDER BY group_id, name",
-        dsl::distinct_on_first_user_per_group,
-    );
+    let expected: Query<(), (Nullable<Int8>, Text)> =
+        sql("SELECT DISTINCT ON (group_id) group_id, name FROM users ORDER BY group_id, name");
+    case.assert_same(expected, compile(dsl::distinct_on_first_user_per_group), ());
 }
 
 #[test]
@@ -61,10 +60,8 @@ fn limit_offset() {
     let mut case = Case::new();
     seed_two_groups(&mut case);
 
-    case.assert_same(
-        "SELECT name FROM users ORDER BY name LIMIT 2 OFFSET 1",
-        || dsl::limit_offset(2, 1),
-    );
+    let expected: Query<(), (Text,)> = sql("SELECT name FROM users ORDER BY name LIMIT 2 OFFSET 1");
+    case.assert_same(expected, compile(|| dsl::limit_offset(2, 1)), ());
 }
 
 #[test]
@@ -72,10 +69,9 @@ fn fetch_first_rows_only() {
     let mut case = Case::new();
     seed_two_groups(&mut case);
 
-    case.assert_same(
-        "SELECT name FROM users ORDER BY name OFFSET 1 ROWS FETCH FIRST 2 ROWS ONLY",
-        || dsl::fetch_first_rows_only(2, 1),
-    );
+    let expected: Query<(), (Text,)> =
+        sql("SELECT name FROM users ORDER BY name OFFSET 1 ROWS FETCH FIRST 2 ROWS ONLY");
+    case.assert_same(expected, compile(|| dsl::fetch_first_rows_only(2, 1)), ());
 }
 
 #[test]
@@ -83,10 +79,9 @@ fn fetch_first_with_ties() {
     let mut case = Case::new();
     seed_two_groups(&mut case);
 
-    case.assert_same(
-        "SELECT group_id FROM users ORDER BY group_id FETCH FIRST 1 ROWS WITH TIES",
-        || dsl::fetch_first_with_ties(1),
-    );
+    let expected: Query<(), (Nullable<Int8>,)> =
+        sql("SELECT group_id FROM users ORDER BY group_id FETCH FIRST 1 ROWS WITH TIES");
+    case.assert_same(expected, compile(|| dsl::fetch_first_with_ties(1)), ());
 }
 
 #[test]
@@ -94,13 +89,11 @@ fn aliases() {
     let mut case = Case::new();
     seed_two_groups(&mut case);
 
-    case.assert_same_named(
-        "SELECT u.name AS user_name, g.name AS group_name
+    let expected: Query<(), (Text, Text)> = sql("SELECT u.name AS user_name, g.name AS group_name
          FROM users AS u
          JOIN groups AS g ON g.id = u.group_id
-         ORDER BY user_name",
-        dsl::aliases,
-    );
+         ORDER BY user_name");
+    case.assert_same_named(expected, compile(dsl::aliases), ());
 }
 
 fn seed_tickets(case: &mut Case) -> (String, String) {
@@ -119,10 +112,9 @@ fn for_update() {
     let mut case = Case::new();
     let (batch, _) = seed_tickets(&mut case);
 
-    case.assert_same(
-        &format!("SELECT name FROM tickets WHERE batch = '{batch}' ORDER BY name FOR UPDATE"),
-        || dsl::for_update(&batch),
-    );
+    let expected: Query<(Text,), (Text,)> =
+        sql("SELECT name FROM tickets WHERE batch = $1 ORDER BY name FOR UPDATE");
+    case.assert_same(expected, compile(dsl::for_update), (&batch,));
 }
 
 #[test]
@@ -134,10 +126,9 @@ fn for_share_alongside_other_share() {
         "SELECT 1 FROM tickets WHERE name = '{locked}' FOR SHARE"
     ));
 
-    case.assert_same(
-        &format!("SELECT name FROM tickets WHERE batch = '{batch}' ORDER BY name FOR SHARE"),
-        || dsl::for_share(&batch),
-    );
+    let expected: Query<(Text,), (Text,)> =
+        sql("SELECT name FROM tickets WHERE batch = $1 ORDER BY name FOR SHARE");
+    case.assert_same(expected, compile(dsl::for_share), (&batch,));
 }
 
 #[test]
@@ -149,12 +140,9 @@ fn for_update_skip_locked() {
         "SELECT 1 FROM tickets WHERE name = '{locked}' FOR UPDATE"
     ));
 
-    case.assert_same(
-        &format!(
-            "SELECT name FROM tickets WHERE batch = '{batch}' ORDER BY name FOR UPDATE SKIP LOCKED"
-        ),
-        || dsl::for_update_skip_locked(&batch),
-    );
+    let expected: Query<(Text,), (Text,)> =
+        sql("SELECT name FROM tickets WHERE batch = $1 ORDER BY name FOR UPDATE SKIP LOCKED");
+    case.assert_same(expected, compile(dsl::for_update_skip_locked), (&batch,));
 }
 
 #[test]
@@ -166,10 +154,9 @@ fn for_update_nowait_on_locked_row() {
         "SELECT 1 FROM tickets WHERE name = '{locked}' FOR UPDATE"
     ));
 
-    case.assert_same_error(
-        &format!("SELECT name FROM tickets WHERE name = '{locked}' FOR UPDATE NOWAIT"),
-        || dsl::for_update_nowait(&locked),
-    );
+    let expected: Query<(Text,), (Text,)> =
+        sql("SELECT name FROM tickets WHERE name = $1 FOR UPDATE NOWAIT");
+    case.assert_same_error(expected, compile(dsl::for_update_nowait), (&locked,));
 }
 
 #[test]
@@ -177,7 +164,9 @@ fn star() {
     let mut case = Case::new();
     seed_two_groups(&mut case);
 
-    case.assert_same_named("SELECT * FROM users ORDER BY name", dsl::star);
+    let expected: Query<(), (Int8, Text, Nullable<Text>, Nullable<Int8>)> =
+        sql("SELECT * FROM users ORDER BY name");
+    case.assert_same_named(expected, compile(dsl::star), ());
 }
 
 #[test]
@@ -185,20 +174,19 @@ fn table_star() {
     let mut case = Case::new();
     seed_two_groups(&mut case);
 
-    case.assert_same_named(
+    let expected: Query<(), (Int8, Text, Nullable<Text>, Nullable<Int8>, Text)> = sql(
         "SELECT u.*, g.name AS group_name FROM users u JOIN groups g ON g.id = u.group_id ORDER BY u.name",
-        dsl::table_star,
     );
+    case.assert_same_named(expected, compile(dsl::table_star), ());
 }
 
 #[test]
 fn without_from() {
     let mut case = Case::new();
 
-    case.assert_same(
-        "SELECT 1 + 1, 'a' || 'b', 10 > 3, CURRENT_DATE = CURRENT_DATE",
-        dsl::without_from,
-    );
+    let expected: Query<(), (Int4, Text, Bool, Bool)> =
+        sql("SELECT 1 + 1, 'a' || 'b', 10 > 3, CURRENT_DATE = CURRENT_DATE");
+    case.assert_same(expected, compile(dsl::without_from), ());
 }
 
 #[test]
@@ -210,10 +198,9 @@ fn for_key_share_alongside_no_key_update() {
         "SELECT 1 FROM tickets WHERE name = '{locked}' FOR NO KEY UPDATE"
     ));
 
-    case.assert_same(
-        &format!("SELECT name FROM tickets WHERE batch = '{batch}' ORDER BY name FOR KEY SHARE"),
-        || dsl::for_key_share(&batch),
-    );
+    let expected: Query<(Text,), (Text,)> =
+        sql("SELECT name FROM tickets WHERE batch = $1 ORDER BY name FOR KEY SHARE");
+    case.assert_same(expected, compile(dsl::for_key_share), (&batch,));
 }
 
 #[test]
@@ -225,11 +212,13 @@ fn for_no_key_update_skip_locked() {
         "SELECT 1 FROM tickets WHERE name = '{locked}' FOR NO KEY UPDATE"
     ));
 
+    let expected: Query<(Text,), (Text,)> = sql(
+        "SELECT name FROM tickets WHERE batch = $1 ORDER BY name FOR NO KEY UPDATE SKIP LOCKED",
+    );
     case.assert_same(
-        &format!(
-            "SELECT name FROM tickets WHERE batch = '{batch}' ORDER BY name FOR NO KEY UPDATE SKIP LOCKED"
-        ),
-        || dsl::for_no_key_update_skip_locked(&batch),
+        expected,
+        compile(dsl::for_no_key_update_skip_locked),
+        (&batch,),
     );
 }
 
@@ -238,8 +227,8 @@ fn for_update_of_table() {
     let mut case = Case::new();
     seed_two_groups(&mut case);
 
-    case.assert_same(
+    let expected: Query<(), (Text, Text)> = sql(
         "SELECT u.name, g.name FROM users u JOIN groups g ON g.id = u.group_id ORDER BY u.name FOR UPDATE OF u",
-        dsl::for_update_of_table,
     );
+    case.assert_same(expected, compile(dsl::for_update_of_table), ());
 }

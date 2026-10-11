@@ -1,9 +1,11 @@
-use crate::support::Query;
+use crate::support::placeholder;
+use surus::Query;
+use surus::types as t;
 
-pub fn line_line() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn line_line() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }
 
-pub fn lseg_lseg() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn lseg_lseg() -> Query<(), (t::Nullable<t::Bool>,)> {
+    placeholder()
 }

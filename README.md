@@ -47,8 +47,8 @@ Rust.
 The test suite in `tests/dsl` already exists. Each test pairs plain SQL in
 `mod.rs` with a placeholder in the sibling `dsl.rs` that returns
 `SELECT NULL WHERE false`. Replace the placeholders with queries built through
-the DSL; do not change the tests, the fixtures in `tests/dsl/schema`, or the
-generated files under `tests/dsl/operators/catalog`.
+the DSL, and the stand-in `tests/dsl/schema.rs` with the typed schema generated
+from the `tests/dsl/schema` fixtures.
 
 Before implementing, split the work into a small sequence of concrete steps.
 Execute them one by one, validating each step before moving to the next.
@@ -60,8 +60,8 @@ features not required by the current spec.
 
 Never modify or rewrite the specification. If the specification is ambiguous or
 incomplete, resolve it in the implementation without changing the source
-documents. Never change the tests either: under `tests/dsl`, edit only the
-`dsl.rs` files.
+documents. Never change the tests either: under `tests/dsl`, edit only
+`schema.rs` and `dsl.rs` files.
 
 Focus on producing a small, working implementation in this repository.
 

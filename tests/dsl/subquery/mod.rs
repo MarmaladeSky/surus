@@ -1,6 +1,8 @@
 mod dsl;
 
-use crate::support::{Case, rnd};
+use crate::support::{Case, compile, rnd, sql};
+use surus::Query;
+use surus::types::{Int8, Nullable, Text};
 
 #[test]
 fn scalar_group_name() {
@@ -16,12 +18,12 @@ fn scalar_group_name() {
          INSERT INTO users (name) VALUES ('{loner}');"
     ));
 
-    case.assert_same(
+    let expected: Query<(), (Text, Nullable<Text>)> = sql(
         "SELECT users.name, (SELECT groups.name FROM groups WHERE groups.id = users.group_id)
          FROM users
          ORDER BY users.name",
-        dsl::scalar_group_name,
     );
+    case.assert_same(expected, compile(dsl::scalar_group_name), ());
 }
 
 #[test]
@@ -36,10 +38,9 @@ fn scalar_multiple_rows_fails() {
         rnd::text(),
     ));
 
-    case.assert_same_error(
-        "SELECT users.name, (SELECT groups.name FROM groups) FROM users",
-        dsl::scalar_multiple_rows_fails,
-    );
+    let expected: Query<(), (Text, Nullable<Text>)> =
+        sql("SELECT users.name, (SELECT groups.name FROM groups) FROM users");
+    case.assert_same_error(expected, compile(dsl::scalar_multiple_rows_fails), ());
 }
 
 fn seed_groups(case: &mut Case) -> String {
@@ -76,12 +77,10 @@ fn exists_groups_with_users() {
     let mut case = Case::new();
     seed_groups(&mut case);
 
-    case.assert_same(
-        "SELECT name FROM groups
+    let expected: Query<(), (Text,)> = sql("SELECT name FROM groups
          WHERE EXISTS (SELECT 1 FROM users WHERE users.group_id = groups.id)
-         ORDER BY name",
-        dsl::exists_groups_with_users,
-    );
+         ORDER BY name");
+    case.assert_same(expected, compile(dsl::exists_groups_with_users), ());
 }
 
 #[test]
@@ -89,12 +88,10 @@ fn not_exists_empty_groups() {
     let mut case = Case::new();
     seed_groups(&mut case);
 
-    case.assert_same(
-        "SELECT name FROM groups
+    let expected: Query<(), (Text,)> = sql("SELECT name FROM groups
          WHERE NOT EXISTS (SELECT 1 FROM users WHERE users.group_id = groups.id)
-         ORDER BY name",
-        dsl::not_exists_empty_groups,
-    );
+         ORDER BY name");
+    case.assert_same(expected, compile(dsl::not_exists_empty_groups), ());
 }
 
 #[test]
@@ -102,14 +99,10 @@ fn in_subquery() {
     let mut case = Case::new();
     let big = seed_groups(&mut case);
 
-    case.assert_same(
-        &format!(
-            "SELECT name FROM users
-             WHERE group_id IN (SELECT id FROM groups WHERE name = '{big}')
-             ORDER BY name"
-        ),
-        || dsl::in_subquery(&big),
-    );
+    let expected: Query<(Text,), (Text,)> = sql("SELECT name FROM users
+         WHERE group_id IN (SELECT id FROM groups WHERE name = $1)
+         ORDER BY name");
+    case.assert_same(expected, compile(dsl::in_subquery), (&big,));
 }
 
 #[test]
@@ -117,12 +110,10 @@ fn any_not_the_cheapest() {
     let mut case = Case::new();
     seed_products(&mut case);
 
-    case.assert_same(
-        "SELECT name FROM products
+    let expected: Query<(), (Text,)> = sql("SELECT name FROM products
          WHERE price_cents > ANY (SELECT price_cents FROM products)
-         ORDER BY name",
-        dsl::any_not_the_cheapest,
-    );
+         ORDER BY name");
+    case.assert_same(expected, compile(dsl::any_not_the_cheapest), ());
 }
 
 #[test]
@@ -130,12 +121,10 @@ fn all_the_most_expensive() {
     let mut case = Case::new();
     seed_products(&mut case);
 
-    case.assert_same(
-        "SELECT name FROM products
+    let expected: Query<(), (Text,)> = sql("SELECT name FROM products
          WHERE price_cents >= ALL (SELECT price_cents FROM products)
-         ORDER BY name",
-        dsl::all_the_most_expensive,
-    );
+         ORDER BY name");
+    case.assert_same(expected, compile(dsl::all_the_most_expensive), ());
 }
 
 #[test]
@@ -147,14 +136,10 @@ fn not_in_subquery() {
         rnd::text()
     ));
 
-    case.assert_same(
-        &format!(
-            "SELECT name FROM users
-             WHERE group_id NOT IN (SELECT id FROM groups WHERE name = '{big}')
-             ORDER BY name"
-        ),
-        || dsl::not_in_subquery(&big),
-    );
+    let expected: Query<(Text,), (Text,)> = sql("SELECT name FROM users
+         WHERE group_id NOT IN (SELECT id FROM groups WHERE name = $1)
+         ORDER BY name");
+    case.assert_same(expected, compile(dsl::not_in_subquery), (&big,));
 }
 
 #[test]
@@ -162,14 +147,12 @@ fn not_in_with_null_returns_nothing() {
     let mut case = Case::new();
     seed_groups(&mut case);
 
-    case.assert_same(
-        "SELECT 'with null', count(*) FROM users
+    let expected: Query<(), (Text, Int8)> = sql("SELECT 'with null', count(*) FROM users
          WHERE group_id NOT IN (SELECT group_id FROM users)
          UNION ALL
          SELECT 'without null', count(*) FROM users
-         WHERE group_id NOT IN (SELECT group_id FROM users WHERE group_id IS NOT NULL)",
-        dsl::not_in_with_null_returns_nothing,
-    );
+         WHERE group_id NOT IN (SELECT group_id FROM users WHERE group_id IS NOT NULL)");
+    case.assert_same(expected, compile(dsl::not_in_with_null_returns_nothing), ());
 }
 
 #[test]
@@ -177,14 +160,10 @@ fn row_valued_in() {
     let mut case = Case::new();
     let big = seed_groups(&mut case);
 
-    case.assert_same(
-        &format!(
-            "SELECT name FROM users
-             WHERE (group_id, true) IN (SELECT id, name = '{big}' FROM groups)
-             ORDER BY name"
-        ),
-        || dsl::row_valued_in(&big),
-    );
+    let expected: Query<(Text,), (Text,)> = sql("SELECT name FROM users
+         WHERE (group_id, true) IN (SELECT id, name = $1 FROM groups)
+         ORDER BY name");
+    case.assert_same(expected, compile(dsl::row_valued_in), (&big,));
 }
 
 #[test]
@@ -192,12 +171,12 @@ fn correlated_scalar_in_arithmetic() {
     let mut case = Case::new();
     seed_groups(&mut case);
 
-    case.assert_same(
+    let expected: Query<(), (Text, Nullable<Int8>)> = sql(
         "SELECT g.name, (SELECT count(*) FROM users u WHERE u.group_id = g.id) + 1
          FROM groups g
          ORDER BY g.name",
-        dsl::correlated_scalar_in_arithmetic,
     );
+    case.assert_same(expected, compile(dsl::correlated_scalar_in_arithmetic), ());
 }
 
 #[test]
@@ -205,12 +184,10 @@ fn exists_and_predicate() {
     let mut case = Case::new();
     seed_groups(&mut case);
 
-    case.assert_same(
-        "SELECT g.name FROM groups g
+    let expected: Query<(), (Text,)> = sql("SELECT g.name FROM groups g
          WHERE EXISTS (SELECT 1 FROM users u WHERE u.group_id = g.id) AND g.parent_id IS NULL
-         ORDER BY g.name",
-        dsl::exists_and_predicate,
-    );
+         ORDER BY g.name");
+    case.assert_same(expected, compile(dsl::exists_and_predicate), ());
 }
 
 #[test]
@@ -218,8 +195,8 @@ fn scalar_subquery_compared() {
     let mut case = Case::new();
     seed_products(&mut case);
 
-    case.assert_same(
+    let expected: Query<(), (Text,)> = sql(
         "SELECT name FROM products WHERE price_cents > (SELECT avg(price_cents) FROM products) ORDER BY name",
-        dsl::scalar_subquery_compared,
     );
+    case.assert_same(expected, compile(dsl::scalar_subquery_compared), ());
 }

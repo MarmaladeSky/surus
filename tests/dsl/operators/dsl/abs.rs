@@ -1,25 +1,27 @@
-use crate::support::Query;
+use crate::support::placeholder;
+use surus::Query;
+use surus::types as t;
 
-pub fn float4() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn float4() -> Query<(), (t::Nullable<t::Float4>,)> {
+    placeholder()
 }
 
-pub fn float8() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn float8() -> Query<(), (t::Nullable<t::Float8>,)> {
+    placeholder()
 }
 
-pub fn int2() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn int2() -> Query<(), (t::Nullable<t::Int2>,)> {
+    placeholder()
 }
 
-pub fn int4() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn int4() -> Query<(), (t::Nullable<t::Int4>,)> {
+    placeholder()
 }
 
-pub fn int8() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn int8() -> Query<(), (t::Nullable<t::Int8>,)> {
+    placeholder()
 }
 
-pub fn numeric() -> Query {
-    Query::plain("SELECT NULL WHERE false")
+pub fn numeric() -> Query<(), (t::Nullable<t::Numeric>,)> {
+    placeholder()
 }

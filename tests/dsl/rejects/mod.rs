@@ -14,9 +14,11 @@
 
 mod dsl;
 
-use crate::support::{Case, rnd};
+use crate::support::{Case, compile, rnd, sql};
 use std::path::Path;
 use std::process::Command;
+use surus::Query;
+use surus::types::{Bool, Int4, Int8, Nullable, Text};
 
 #[cfg(not(reject))]
 #[allow(unused_macros)]
@@ -107,10 +109,8 @@ fn column_existence() {
     let mut case = Case::new();
     seed_users(&mut case);
 
-    case.assert_same(
-        "SELECT name FROM users ORDER BY name",
-        dsl::column_existence,
-    );
+    let expected: Query<(), (Text,)> = sql("SELECT name FROM users ORDER BY name");
+    case.assert_same(expected, compile(dsl::column_existence), ());
 }
 
 #[test]
@@ -118,10 +118,8 @@ fn column_scope() {
     let mut case = Case::new();
     seed_users(&mut case);
 
-    case.assert_same(
-        "SELECT u.name FROM users u ORDER BY u.name",
-        dsl::column_scope,
-    );
+    let expected: Query<(), (Text,)> = sql("SELECT u.name FROM users u ORDER BY u.name");
+    case.assert_same(expected, compile(dsl::column_scope), ());
 }
 
 #[test]
@@ -129,10 +127,9 @@ fn where_boolean() {
     let mut case = Case::new();
     seed_users(&mut case);
 
-    case.assert_same(
-        "SELECT name FROM users WHERE email IS NULL ORDER BY name",
-        dsl::where_boolean,
-    );
+    let expected: Query<(), (Text,)> =
+        sql("SELECT name FROM users WHERE email IS NULL ORDER BY name");
+    case.assert_same(expected, compile(dsl::where_boolean), ());
 }
 
 #[test]
@@ -140,10 +137,10 @@ fn having_boolean() {
     let mut case = Case::new();
     seed_users(&mut case);
 
-    case.assert_same(
+    let expected: Query<(), (Nullable<Int8>, Int8)> = sql(
         "SELECT group_id, count(*) FROM users GROUP BY group_id HAVING count(*) > 1 ORDER BY group_id",
-        dsl::having_boolean,
     );
+    case.assert_same(expected, compile(dsl::having_boolean), ());
 }
 
 #[test]
@@ -151,10 +148,10 @@ fn join_on_boolean() {
     let mut case = Case::new();
     seed_users(&mut case);
 
-    case.assert_same(
+    let expected: Query<(), (Text, Text)> = sql(
         "SELECT u.name, g.name FROM users u JOIN groups g ON g.id = u.group_id ORDER BY u.name",
-        dsl::join_on_boolean,
     );
+    case.assert_same(expected, compile(dsl::join_on_boolean), ());
 }
 
 #[test]
@@ -162,10 +159,9 @@ fn update_where_boolean() {
     let mut case = Case::new();
     seed_users(&mut case);
 
-    case.assert_same(
-        "UPDATE users SET email = name WHERE email IS NULL RETURNING name",
-        dsl::update_where_boolean,
-    );
+    let expected: Query<(), (Text,)> =
+        sql("UPDATE users SET email = name WHERE email IS NULL RETURNING name");
+    case.assert_same(expected, compile(dsl::update_where_boolean), ());
 }
 
 #[test]
@@ -173,10 +169,8 @@ fn delete_where_boolean() {
     let mut case = Case::new();
     seed_users(&mut case);
 
-    case.assert_same(
-        "DELETE FROM users WHERE email IS NULL RETURNING name",
-        dsl::delete_where_boolean,
-    );
+    let expected: Query<(), (Text,)> = sql("DELETE FROM users WHERE email IS NULL RETURNING name");
+    case.assert_same(expected, compile(dsl::delete_where_boolean), ());
 }
 
 #[test]
@@ -184,10 +178,9 @@ fn case_when_boolean() {
     let mut case = Case::new();
     seed_users(&mut case);
 
-    case.assert_same(
-        "SELECT CASE WHEN email IS NULL THEN 'none' ELSE email END FROM users ORDER BY name",
-        dsl::case_when_boolean,
-    );
+    let expected: Query<(), (Nullable<Text>,)> =
+        sql("SELECT CASE WHEN email IS NULL THEN 'none' ELSE email END FROM users ORDER BY name");
+    case.assert_same(expected, compile(dsl::case_when_boolean), ());
 }
 
 #[test]
@@ -195,10 +188,9 @@ fn filter_boolean() {
     let mut case = Case::new();
     seed_users(&mut case);
 
-    case.assert_same(
-        "SELECT count(*) FILTER (WHERE email IS NOT NULL) FROM users",
-        dsl::filter_boolean,
-    );
+    let expected: Query<(), (Int8,)> =
+        sql("SELECT count(*) FILTER (WHERE email IS NOT NULL) FROM users");
+    case.assert_same(expected, compile(dsl::filter_boolean), ());
 }
 
 #[test]
@@ -206,10 +198,9 @@ fn comparison_types() {
     let mut case = Case::new();
     seed_users(&mut case);
 
-    case.assert_same(
-        "SELECT name FROM users WHERE id <> group_id ORDER BY name",
-        dsl::comparison_types,
-    );
+    let expected: Query<(), (Text,)> =
+        sql("SELECT name FROM users WHERE id <> group_id ORDER BY name");
+    case.assert_same(expected, compile(dsl::comparison_types), ());
 }
 
 #[test]
@@ -217,10 +208,8 @@ fn operator_operands() {
     let mut case = Case::new();
     case.exec(r#"INSERT INTO type_samples (v_int4, v_jsonb) VALUES (1, '{"a": 1}')"#);
 
-    case.assert_same(
-        "SELECT v_jsonb @> v_jsonb FROM type_samples",
-        dsl::operator_operands,
-    );
+    let expected: Query<(), (Nullable<Bool>,)> = sql("SELECT v_jsonb @> v_jsonb FROM type_samples");
+    case.assert_same(expected, compile(dsl::operator_operands), ());
 }
 
 #[test]
@@ -228,10 +217,8 @@ fn function_arguments() {
     let mut case = Case::new();
     seed_users(&mut case);
 
-    case.assert_same(
-        "SELECT lower(name) FROM users ORDER BY name",
-        dsl::function_arguments,
-    );
+    let expected: Query<(), (Text,)> = sql("SELECT lower(name) FROM users ORDER BY name");
+    case.assert_same(expected, compile(dsl::function_arguments), ());
 }
 
 #[test]
@@ -239,7 +226,8 @@ fn cast_validity() {
     let mut case = Case::new();
     seed_users(&mut case);
 
-    case.assert_same("SELECT id::text FROM users ORDER BY id", dsl::cast_validity);
+    let expected: Query<(), (Text,)> = sql("SELECT id::text FROM users ORDER BY id");
+    case.assert_same(expected, compile(dsl::cast_validity), ());
 }
 
 #[test]
@@ -253,39 +241,35 @@ fn parameter_mapping() {
         rnd::text(),
     ));
 
-    case.assert_same(&format!("SELECT name FROM users WHERE id = {id}"), || {
-        dsl::parameter_mapping(id)
-    });
+    let expected: Query<(Int8,), (Text,)> = sql("SELECT name FROM users WHERE id = $1");
+    case.assert_same(expected, compile(dsl::parameter_mapping), (id,));
 }
 
 #[test]
 fn insert_value_type() {
     let mut case = Case::new();
 
-    case.assert_same(
+    let expected: Query<(), (Text,)> = sql(
         "INSERT INTO products (name, price_cents, quantity) VALUES ('p', 10, 1) RETURNING name",
-        dsl::insert_value_type,
     );
+    case.assert_same(expected, compile(dsl::insert_value_type), ());
 }
 
 #[test]
 fn insert_not_null() {
     let mut case = Case::new();
 
-    case.assert_same(
-        "INSERT INTO users (name) VALUES ('x') RETURNING name",
-        dsl::insert_not_null,
-    );
+    let expected: Query<(), (Text,)> = sql("INSERT INTO users (name) VALUES ('x') RETURNING name");
+    case.assert_same(expected, compile(dsl::insert_not_null), ());
 }
 
 #[test]
 fn insert_arity() {
     let mut case = Case::new();
 
-    case.assert_same(
-        "INSERT INTO users (name, email) VALUES ('x', NULL) RETURNING name",
-        dsl::insert_arity,
-    );
+    let expected: Query<(), (Text,)> =
+        sql("INSERT INTO users (name, email) VALUES ('x', NULL) RETURNING name");
+    case.assert_same(expected, compile(dsl::insert_arity), ());
 }
 
 #[test]
@@ -293,10 +277,9 @@ fn update_assignment_type() {
     let mut case = Case::new();
     seed_products(&mut case);
 
-    case.assert_same(
-        "UPDATE products SET quantity = quantity + 1 RETURNING name, quantity",
-        dsl::update_assignment_type,
-    );
+    let expected: Query<(), (Text, Int4)> =
+        sql("UPDATE products SET quantity = quantity + 1 RETURNING name, quantity");
+    case.assert_same(expected, compile(dsl::update_assignment_type), ());
 }
 
 #[test]
@@ -304,10 +287,9 @@ fn nullability_propagation() {
     let mut case = Case::new();
     seed_users(&mut case);
 
-    case.assert_same(
-        "INSERT INTO users (name) SELECT name || '!' FROM users RETURNING name",
-        dsl::nullability_propagation,
-    );
+    let expected: Query<(), (Text,)> =
+        sql("INSERT INTO users (name) SELECT name || '!' FROM users RETURNING name");
+    case.assert_same(expected, compile(dsl::nullability_propagation), ());
 }
 
 #[test]
@@ -315,20 +297,17 @@ fn result_row_type() {
     let mut case = Case::new();
     seed_users(&mut case);
 
-    case.assert_same(
-        "SELECT id, name FROM users ORDER BY id",
-        dsl::result_row_type,
-    );
+    let expected: Query<(), (Int8, Text)> = sql("SELECT id, name FROM users ORDER BY id");
+    case.assert_same(expected, compile(dsl::result_row_type), ());
 }
 
 #[test]
 fn returning_type() {
     let mut case = Case::new();
 
-    case.assert_same(
-        "INSERT INTO users (name) VALUES ('x') RETURNING id IS NOT NULL, name",
-        dsl::returning_type,
-    );
+    let expected: Query<(), (Bool, Text)> =
+        sql("INSERT INTO users (name) VALUES ('x') RETURNING id IS NOT NULL, name");
+    case.assert_same(expected, compile(dsl::returning_type), ());
 }
 
 #[test]
@@ -336,10 +315,9 @@ fn cte_column_type() {
     let mut case = Case::new();
     seed_users(&mut case);
 
-    case.assert_same(
-        "WITH t AS (SELECT id, name FROM users) SELECT name FROM t WHERE id > 0 ORDER BY name",
-        dsl::cte_column_type,
-    );
+    let expected: Query<(), (Text,)> =
+        sql("WITH t AS (SELECT id, name FROM users) SELECT name FROM t WHERE id > 0 ORDER BY name");
+    case.assert_same(expected, compile(dsl::cte_column_type), ());
 }
 
 #[test]
@@ -347,10 +325,9 @@ fn union_column_types() {
     let mut case = Case::new();
     seed_users(&mut case);
 
-    case.assert_same(
-        "SELECT id, name FROM users UNION SELECT id, name FROM groups ORDER BY name",
-        dsl::union_column_types,
-    );
+    let expected: Query<(), (Int8, Text)> =
+        sql("SELECT id, name FROM users UNION SELECT id, name FROM groups ORDER BY name");
+    case.assert_same(expected, compile(dsl::union_column_types), ());
 }
 
 #[test]
@@ -358,10 +335,9 @@ fn union_arity() {
     let mut case = Case::new();
     seed_users(&mut case);
 
-    case.assert_same(
-        "SELECT id, name FROM users UNION SELECT id, name FROM groups ORDER BY name",
-        dsl::union_arity,
-    );
+    let expected: Query<(), (Int8, Text)> =
+        sql("SELECT id, name FROM users UNION SELECT id, name FROM groups ORDER BY name");
+    case.assert_same(expected, compile(dsl::union_arity), ());
 }
 
 #[test]
@@ -369,10 +345,10 @@ fn scalar_subquery_shape() {
     let mut case = Case::new();
     seed_users(&mut case);
 
-    case.assert_same(
+    let expected: Query<(), (Text, Nullable<Text>)> = sql(
         "SELECT u.name, (SELECT g.name FROM groups g WHERE g.id = u.group_id) FROM users u ORDER BY u.name",
-        dsl::scalar_subquery_shape,
     );
+    case.assert_same(expected, compile(dsl::scalar_subquery_shape), ());
 }
 
 #[test]
@@ -380,10 +356,9 @@ fn in_subquery_type() {
     let mut case = Case::new();
     seed_users(&mut case);
 
-    case.assert_same(
-        "SELECT name FROM users WHERE group_id IN (SELECT id FROM groups) ORDER BY name",
-        dsl::in_subquery_type,
-    );
+    let expected: Query<(), (Text,)> =
+        sql("SELECT name FROM users WHERE group_id IN (SELECT id FROM groups) ORDER BY name");
+    case.assert_same(expected, compile(dsl::in_subquery_type), ());
 }
 
 #[test]

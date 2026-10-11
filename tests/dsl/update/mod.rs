@@ -1,7 +1,8 @@
 mod dsl;
 
-use crate::support::{Case, rnd};
-use postgres::types::Type;
+use crate::support::{Case, compile, rnd, sql};
+use surus::Query;
+use surus::types::{Bool, Int4, Int8, Nullable, Text};
 
 #[test]
 fn set_email() {
@@ -11,10 +12,9 @@ fn set_email() {
 
     case.exec(&format!("INSERT INTO users (name) VALUES ('{name}')"));
 
-    case.assert_same(
-        &format!("UPDATE users SET email = '{email}' WHERE name = '{name}' RETURNING name, email"),
-        || dsl::set_email(&name, &email),
-    );
+    let expected: Query<(Text, Text), (Text, Nullable<Text>)> =
+        sql("UPDATE users SET email = $1 WHERE name = $2 RETURNING name, email");
+    case.assert_same(expected, compile(dsl::set_email), (&email, &name));
 }
 
 #[test]
@@ -31,13 +31,12 @@ fn update_from() {
         rnd::text(),
     ));
 
-    case.assert_same(
-        "UPDATE users SET email = groups.name || '@example.com'
+    let expected: Query<(), (Text, Nullable<Text>)> =
+        sql("UPDATE users SET email = groups.name || '@example.com'
          FROM groups
          WHERE groups.id = users.group_id
-         RETURNING users.name, users.email",
-        dsl::update_from,
-    );
+         RETURNING users.name, users.email");
+    case.assert_same(expected, compile(dsl::update_from), ());
 }
 
 #[test]
@@ -51,14 +50,16 @@ fn set_row_from_subquery() {
         rnd::text()
     ));
 
+    let expected: Query<(Text, Text), (Text, Nullable<Text>, Bool)> = sql(
+        "UPDATE users
+         SET (email, group_id) = (SELECT g.name || '@example.com', g.id FROM groups g WHERE g.name = $1)
+         WHERE name = $2
+         RETURNING name, email, group_id IS NOT NULL",
+    );
     case.assert_same(
-        &format!(
-            "UPDATE users
-             SET (email, group_id) = (SELECT g.name || '@example.com', g.id FROM groups g WHERE g.name = '{group}')
-             WHERE name = '{user}'
-             RETURNING name, email, group_id IS NOT NULL"
-        ),
-        || dsl::set_row_from_subquery(&user, &group),
+        expected,
+        compile(dsl::set_row_from_subquery),
+        (&group, &user),
     );
 }
 
@@ -70,12 +71,14 @@ fn set_row_constructor() {
     let email = rnd::text();
     case.exec(&format!("INSERT INTO users (name) VALUES ('{user}')"));
 
+    let expected: Query<(Text, Text, Text), (Text, Nullable<Text>)> = sql(
+        "UPDATE users SET (name, email) = ROW($1, $2) WHERE name = $3
+         RETURNING name, email",
+    );
     case.assert_same(
-        &format!(
-            "UPDATE users SET (name, email) = ROW('{renamed}', '{email}') WHERE name = '{user}'
-             RETURNING name, email"
-        ),
-        || dsl::set_row_constructor(&user, &renamed, &email),
+        expected,
+        compile(dsl::set_row_constructor),
+        (&renamed, &email, &user),
     );
 }
 
@@ -89,10 +92,9 @@ fn returning_star() {
         rnd::int(),
     ));
 
-    case.assert_same_named(
-        &format!("UPDATE products SET quantity = quantity + 1 WHERE name = '{name}' RETURNING *"),
-        || dsl::returning_star(&name),
-    );
+    let expected: Query<(Text,), (Int8, Text, Int4, Int4, Nullable<Int8>, Nullable<Int8>)> =
+        sql("UPDATE products SET quantity = quantity + 1 WHERE name = $1 RETURNING *");
+    case.assert_same_named(expected, compile(dsl::returning_star), (&name,));
 }
 
 #[test]
@@ -105,12 +107,14 @@ fn returning_old_and_new() {
         rnd::int(),
     ));
 
+    let expected: Query<(Text,), (Int4, Int4, Nullable<Int8>)> = sql(
+        "UPDATE products SET quantity = quantity + 5 WHERE name = $1
+         RETURNING WITH (OLD AS o, NEW AS n) o.quantity, n.quantity, n.total_cents - o.total_cents",
+    );
     case.assert_same(
-        &format!(
-            "UPDATE products SET quantity = quantity + 5 WHERE name = '{name}'
-             RETURNING WITH (OLD AS o, NEW AS n) o.quantity, n.quantity, n.total_cents - o.total_cents"
-        ),
-        || dsl::returning_old_and_new(&name, 5),
+        expected,
+        compile(|| dsl::returning_old_and_new(5)),
+        (&name,),
     );
 }
 
@@ -124,10 +128,10 @@ fn update_set_expression() {
         rnd::text(),
     ));
 
-    case.assert_same(
+    let expected: Query<(), (Text, Int4)> = sql(
         "UPDATE products SET quantity = quantity * 2 + 1 WHERE price_cents > 0 RETURNING name, quantity",
-        dsl::update_set_expression,
     );
+    case.assert_same(expected, compile(dsl::update_set_expression), ());
 }
 
 #[test]
@@ -146,13 +150,12 @@ fn update_from_join_predicate() {
         rnd::text(),
     ));
 
-    case.assert_same(
-        "UPDATE users u SET email = g.name || '@x'
+    let expected: Query<(), (Text, Nullable<Text>)> =
+        sql("UPDATE users u SET email = g.name || '@x'
          FROM groups g
          WHERE g.id = u.group_id AND u.email IS NULL
-         RETURNING u.name, u.email",
-        dsl::update_from_join_predicate,
-    );
+         RETURNING u.name, u.email");
+    case.assert_same(expected, compile(dsl::update_from_join_predicate), ());
 }
 
 #[test]
@@ -167,9 +170,7 @@ fn update_bound() {
         rnd::text(),
     ));
 
-    case.assert_same(
-        &format!("UPDATE users SET name = '{name}' WHERE id = {id} RETURNING id, name"),
-        || dsl::update_bound(id, &name),
-    );
-    case.assert_param_types(&[Type::TEXT, Type::INT8], || dsl::update_bound(id, &name));
+    let expected: Query<(Text, Int8), (Int8, Text)> =
+        sql("UPDATE users SET name = $1 WHERE id = $2 RETURNING id, name");
+    case.assert_same(expected, compile(dsl::update_bound), (&name, id));
 }
