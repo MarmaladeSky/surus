@@ -10,4 +10,4 @@ bytes = "1.12.1"
 postgres = "0.19.14"
 
 [workspace]
-members = ["tools/opgen"]
+members = ["tools/opgen", "tools/schemagen"]

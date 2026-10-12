@@ -1,10 +1,18 @@
-use crate::support::placeholder;
+use crate::schema::type_samples;
 use surus::Query;
+use surus::prelude::*;
 use surus::types::{Nullable, Timestamp, Timestamptz};
 
 pub fn at_time_zone(
-    _utc: &str,
-    _berlin: &str,
+    utc: &str,
+    berlin: &str,
 ) -> Query<(), (Nullable<Timestamp>, Nullable<Timestamptz>)> {
-    placeholder()
+    type_samples
+        .select(|s| {
+            (
+                s.v_timestamptz.at_time_zone(utc),
+                s.v_timestamp.at_time_zone(berlin),
+            )
+        })
+        .into()
 }
