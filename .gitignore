@@ -2,3 +2,4 @@
 *.img
 .idea
 runs/
+/tools/runstats/target
