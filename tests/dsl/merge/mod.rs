@@ -85,3 +85,29 @@ fn returning_old_and_new() {
         (&existing, price, &fresh),
     );
 }
+
+#[test]
+fn conditional_when() {
+    let mut case = Case::new();
+    let sold_out = rnd::text();
+    let in_stock = rnd::text();
+
+    case.exec(&format!(
+        "INSERT INTO products (name, price_cents, quantity)
+         VALUES ('{sold_out}', {}, 0), ('{in_stock}', {}, 2)",
+        rnd::int(),
+        rnd::int(),
+    ));
+
+    let expected: Query<(Text, Text), (Text, Text)> = sql("MERGE INTO products
+         USING (VALUES ($1), ($2)) AS src(name)
+         ON products.name = src.name
+         WHEN MATCHED AND products.quantity = 0 THEN DELETE
+         WHEN MATCHED THEN UPDATE SET quantity = products.quantity - 1
+         RETURNING merge_action(), products.name");
+    case.assert_same(
+        expected,
+        compile(dsl::conditional_when),
+        (&sold_out, &in_stock),
+    );
+}

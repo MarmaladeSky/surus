@@ -110,3 +110,20 @@ fn window_over_expression() {
     );
     case.assert_same(expected, compile(dsl::window_over_expression), ());
 }
+
+#[test]
+fn split_part_domain() {
+    let mut case = Case::new();
+    case.exec(&format!(
+        "INSERT INTO users (name, email) VALUES ('{}', '{}@{}'), ('{}', NULL)",
+        rnd::text(),
+        rnd::text(),
+        rnd::text(),
+        rnd::text(),
+    ));
+
+    let expected: Query<(), (Text, Nullable<Text>)> = sql(
+        "SELECT name, split_part(email, '@', 2) FROM users WHERE email IS NOT NULL ORDER BY name",
+    );
+    case.assert_same(expected, compile(dsl::split_part_domain), ());
+}

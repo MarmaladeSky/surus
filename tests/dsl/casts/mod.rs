@@ -2,7 +2,7 @@ mod dsl;
 
 use crate::support::{Case, compile, rnd, sql};
 use surus::Query;
-use surus::types::{Bool, Float8, Int4, Int8, Numeric, Text, Varchar};
+use surus::types::{Bool, Float8, Int4, Int8, Nullable, Numeric, Text, Varchar};
 
 fn seed_products(case: &mut Case) {
     case.exec(&format!(
@@ -44,4 +44,16 @@ fn invalid_text_fails_at_runtime() {
 
     let expected: Query<(), (Int4,)> = sql("SELECT name::int4 FROM products");
     case.assert_same_error(expected, compile(dsl::invalid_text_fails_at_runtime), ());
+}
+
+#[test]
+fn implicit_varchar_to_text() {
+    let mut case = Case::new();
+    case.exec(&format!(
+        "INSERT INTO type_samples (v_varchar) VALUES ('{}')",
+        rnd::text().to_uppercase(),
+    ));
+
+    let expected: Query<(), (Nullable<Text>,)> = sql("SELECT lower(v_varchar) FROM type_samples");
+    case.assert_same(expected, compile(dsl::implicit_varchar_to_text), ());
 }

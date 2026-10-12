@@ -1,8 +1,8 @@
 mod dsl;
 
-use crate::support::{Case, compile, literal, sql};
+use crate::support::{Case, compile, literal, rnd, sql};
 use surus::Query;
-use surus::types::{Nullable, Timestamp, Timestamptz};
+use surus::types::{Int4, Nullable, Timestamp, Timestamptz};
 
 #[test]
 fn at_time_zone() {
@@ -21,4 +21,19 @@ fn at_time_zone() {
         compile(|| dsl::at_time_zone("UTC", "Europe/Berlin")),
         (),
     );
+}
+
+#[test]
+fn before_now() {
+    let mut case = Case::new();
+    let past = rnd::int();
+    case.exec(&format!(
+        "INSERT INTO type_samples (v_int4, v_timestamptz)
+         VALUES ({past}, '2000-01-01 00:00:00+00'), ({}, '2999-01-01 00:00:00+00')",
+        past + 1,
+    ));
+
+    let expected: Query<(), (Nullable<Int4>,)> =
+        sql("SELECT v_int4 FROM type_samples WHERE v_timestamptz < now() ORDER BY v_int4");
+    case.assert_same(expected, compile(dsl::before_now), ());
 }

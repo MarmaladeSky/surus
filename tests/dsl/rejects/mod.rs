@@ -48,10 +48,16 @@ const CASES: &[(&str, &[&str])] = &[
     ("column_existence", EXISTENCE),
     ("column_scope", TYPE),
     ("where_boolean", TYPE),
+    ("window_function_in_where", TYPE),
     ("having_boolean", TYPE),
+    ("select_ungrouped_column", TYPE),
+    ("select_aggregate_with_plain_column", TYPE),
+    ("distinct_order_by_unselected", TYPE),
     ("join_on_boolean", TYPE),
+    ("for_update_outer_join", TYPE),
     ("update_where_boolean", TYPE),
     ("delete_where_boolean", TYPE),
+    ("delete_with_limit", TYPE),
     ("case_when_boolean", TYPE),
     ("filter_boolean", TYPE),
     ("comparison_types", TYPE),
@@ -62,7 +68,10 @@ const CASES: &[(&str, &[&str])] = &[
     ("insert_value_type", TYPE),
     ("insert_not_null", TYPE),
     ("insert_arity", TYPE),
+    ("on_conflict_non_unique_target", TYPE),
     ("update_assignment_type", TYPE),
+    ("update_set_joined_column", TYPE),
+    ("update_generated_column", TYPE),
     ("nullability_propagation", TYPE),
     ("result_row_type", TYPE),
     ("returning_type", TYPE),
@@ -133,6 +142,15 @@ fn where_boolean() {
 }
 
 #[test]
+fn window_function_in_where() {
+    let mut case = Case::new();
+    seed_users(&mut case);
+
+    let expected: Query<(), (Text,)> = sql("SELECT name FROM users WHERE id > 0 ORDER BY name");
+    case.assert_same(expected, compile(dsl::window_function_in_where), ());
+}
+
+#[test]
 fn having_boolean() {
     let mut case = Case::new();
     seed_users(&mut case);
@@ -144,6 +162,38 @@ fn having_boolean() {
 }
 
 #[test]
+fn select_ungrouped_column() {
+    let mut case = Case::new();
+    seed_users(&mut case);
+
+    let expected: Query<(), (Text, Int8)> =
+        sql("SELECT name, count(*) FROM users GROUP BY name ORDER BY name");
+    case.assert_same(expected, compile(dsl::select_ungrouped_column), ());
+}
+
+#[test]
+fn select_aggregate_with_plain_column() {
+    let mut case = Case::new();
+    seed_users(&mut case);
+
+    let expected: Query<(), (Text, Int8)> = sql("SELECT name, id FROM users ORDER BY name");
+    case.assert_same(
+        expected,
+        compile(dsl::select_aggregate_with_plain_column),
+        (),
+    );
+}
+
+#[test]
+fn distinct_order_by_unselected() {
+    let mut case = Case::new();
+    seed_users(&mut case);
+
+    let expected: Query<(), (Text,)> = sql("SELECT DISTINCT name FROM users ORDER BY name");
+    case.assert_same(expected, compile(dsl::distinct_order_by_unselected), ());
+}
+
+#[test]
 fn join_on_boolean() {
     let mut case = Case::new();
     seed_users(&mut case);
@@ -152,6 +202,17 @@ fn join_on_boolean() {
         "SELECT u.name, g.name FROM users u JOIN groups g ON g.id = u.group_id ORDER BY u.name",
     );
     case.assert_same(expected, compile(dsl::join_on_boolean), ());
+}
+
+#[test]
+fn for_update_outer_join() {
+    let mut case = Case::new();
+    seed_users(&mut case);
+
+    let expected: Query<(), (Text,)> = sql(
+        "SELECT u.name FROM users u JOIN groups g ON g.id = u.group_id ORDER BY u.name FOR UPDATE",
+    );
+    case.assert_same(expected, compile(dsl::for_update_outer_join), ());
 }
 
 #[test]
@@ -171,6 +232,15 @@ fn delete_where_boolean() {
 
     let expected: Query<(), (Text,)> = sql("DELETE FROM users WHERE email IS NULL RETURNING name");
     case.assert_same(expected, compile(dsl::delete_where_boolean), ());
+}
+
+#[test]
+fn delete_with_limit() {
+    let mut case = Case::new();
+    seed_users(&mut case);
+
+    let expected: Query<(), (Text,)> = sql("DELETE FROM users WHERE email IS NULL RETURNING name");
+    case.assert_same(expected, compile(dsl::delete_with_limit), ());
 }
 
 #[test]
@@ -273,6 +343,15 @@ fn insert_arity() {
 }
 
 #[test]
+fn on_conflict_non_unique_target() {
+    let mut case = Case::new();
+
+    let expected: Query<(), (Text,)> =
+        sql("INSERT INTO users (name) VALUES ('x') ON CONFLICT (id) DO NOTHING RETURNING name");
+    case.assert_same(expected, compile(dsl::on_conflict_non_unique_target), ());
+}
+
+#[test]
 fn update_assignment_type() {
     let mut case = Case::new();
     seed_products(&mut case);
@@ -280,6 +359,27 @@ fn update_assignment_type() {
     let expected: Query<(), (Text, Int4)> =
         sql("UPDATE products SET quantity = quantity + 1 RETURNING name, quantity");
     case.assert_same(expected, compile(dsl::update_assignment_type), ());
+}
+
+#[test]
+fn update_set_joined_column() {
+    let mut case = Case::new();
+    seed_users(&mut case);
+
+    let expected: Query<(), (Text,)> = sql(
+        "UPDATE users u SET name = g.name FROM groups g WHERE g.id = u.group_id RETURNING u.name",
+    );
+    case.assert_same(expected, compile(dsl::update_set_joined_column), ());
+}
+
+#[test]
+fn update_generated_column() {
+    let mut case = Case::new();
+    seed_products(&mut case);
+
+    let expected: Query<(), (Text,)> =
+        sql("UPDATE products SET quantity = quantity + 1 RETURNING name");
+    case.assert_same(expected, compile(dsl::update_generated_column), ());
 }
 
 #[test]

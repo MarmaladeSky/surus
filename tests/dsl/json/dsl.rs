@@ -66,3 +66,7 @@ pub fn jsonb_aggregates() -> Query<(), (Nullable<Jsonb>, Nullable<Jsonb>, Nullab
 pub fn jsonb_path_functions() -> Query<(), (Nullable<Jsonb>, Nullable<Jsonb>, Nullable<Bool>)> {
     placeholder()
 }
+
+pub fn whole_row_aggregate() -> Query<(), (Nullable<Jsonb>,)> {
+    placeholder()
+}

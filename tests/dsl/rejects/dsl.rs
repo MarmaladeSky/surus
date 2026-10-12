@@ -14,11 +14,31 @@ pub fn where_boolean() -> Query<(), (Text,)> {
     placeholder()
 }
 
+pub fn window_function_in_where() -> Query<(), (Text,)> {
+    placeholder()
+}
+
 pub fn having_boolean() -> Query<(), (Nullable<Int8>, Int8)> {
     placeholder()
 }
 
+pub fn select_ungrouped_column() -> Query<(), (Text, Int8)> {
+    placeholder()
+}
+
+pub fn select_aggregate_with_plain_column() -> Query<(), (Text, Int8)> {
+    placeholder()
+}
+
+pub fn distinct_order_by_unselected() -> Query<(), (Text,)> {
+    placeholder()
+}
+
 pub fn join_on_boolean() -> Query<(), (Text, Text)> {
+    placeholder()
+}
+
+pub fn for_update_outer_join() -> Query<(), (Text,)> {
     placeholder()
 }
 
@@ -27,6 +47,10 @@ pub fn update_where_boolean() -> Query<(), (Text,)> {
 }
 
 pub fn delete_where_boolean() -> Query<(), (Text,)> {
+    placeholder()
+}
+
+pub fn delete_with_limit() -> Query<(), (Text,)> {
     placeholder()
 }
 
@@ -70,7 +94,19 @@ pub fn insert_arity() -> Query<(), (Text,)> {
     placeholder()
 }
 
+pub fn on_conflict_non_unique_target() -> Query<(), (Text,)> {
+    placeholder()
+}
+
 pub fn update_assignment_type() -> Query<(), (Text, Int4)> {
+    placeholder()
+}
+
+pub fn update_set_joined_column() -> Query<(), (Text,)> {
+    placeholder()
+}
+
+pub fn update_generated_column() -> Query<(), (Text,)> {
     placeholder()
 }
 

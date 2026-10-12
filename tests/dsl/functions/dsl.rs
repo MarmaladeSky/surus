@@ -29,3 +29,7 @@ pub fn aggregate_of_expression() -> Query<(), (Int8, Nullable<Int8>)> {
 pub fn window_over_expression() -> Query<(), (Text, Nullable<Int8>)> {
     placeholder()
 }
+
+pub fn split_part_domain() -> Query<(), (Text, Nullable<Text>)> {
+    placeholder()
+}

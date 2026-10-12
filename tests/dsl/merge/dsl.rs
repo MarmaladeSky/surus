@@ -13,3 +13,7 @@ pub fn delete_not_matched_by_source() -> Query<(Text,), (Text, Text)> {
 pub fn returning_old_and_new() -> Query<(Text, Int4, Text), (Text, Nullable<Int4>, Int4, Text)> {
     placeholder()
 }
+
+pub fn conditional_when() -> Query<(Text, Text), (Text, Text)> {
+    placeholder()
+}

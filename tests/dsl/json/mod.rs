@@ -163,3 +163,13 @@ fn jsonb_path_functions() {
          ORDER BY p::text");
     case.assert_same(expected, compile(dsl::jsonb_path_functions), ());
 }
+
+#[test]
+fn whole_row_aggregate() {
+    let mut case = Case::new();
+    seed_products(&mut case);
+
+    let expected: Query<(), (Nullable<Jsonb>,)> =
+        sql("SELECT jsonb_agg(products ORDER BY name) FROM products");
+    case.assert_same(expected, compile(dsl::whole_row_aggregate), ());
+}
