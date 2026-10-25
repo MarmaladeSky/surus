@@ -75,8 +75,9 @@ without a password. Tests read the connection URL from
 # Running the experiment
 
 Start the VM from the repository root; the disk images are created on first run
-and the content of the current commit is exported to `/workspace/surus` inside
-it, without git history:
+and the tracked files are exported to `/workspace/surus` inside it, without git
+history. The VM only ever sees the flake source, so commit or stash local
+changes first:
 
 ```
 nix run .#nixosConfigurations.agent.config.microvm.declaredRunner

@@ -11,6 +11,7 @@ out="runs/$(date +%Y%m%d-%H%M%S)-$model-$effort"
 echo "Running $model with effort $effort; results go to $out"
 
 cd "$(dirname "$0")"
+git diff --quiet HEAD || { echo "commit or stash local changes first; the VM exports the tracked tree as it is on disk" >&2; exit 1; }
 mkdir -p "$out"
 git rev-parse HEAD > "$out/commit"
 

@@ -64,7 +64,7 @@
                 {
                   proto = "9p";
                   tag = "repo";
-                  source = ".";
+                  source = "${self}";
                   mountPoint = "/mnt/repo";
                   readOnly = true;
                 }
@@ -86,11 +86,11 @@
                 Type = "oneshot";
                 User = "agent";
               };
-              path = [ pkgs.git pkgs.gnutar ];
               script = ''
                 [ -d /workspace/surus ] || {
                   mkdir -p /workspace/surus
-                  git -C /mnt/repo archive HEAD | tar -x -C /workspace/surus
+                  cp -r /mnt/repo/. /workspace/surus
+                  chmod -R u+w /workspace/surus
                 }
               '';
             };
